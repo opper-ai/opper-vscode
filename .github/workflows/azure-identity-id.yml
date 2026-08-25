@@ -1,0 +1,63 @@
+name: Show Azure DevOps identity id
+
+# One-off helper for authorising the publishing identity.
+#
+# The Marketplace "Members" tab does NOT accept a managed identity's Azure
+# resource id — it wants that identity's Azure DevOps *profile* id, which only
+# comes into existence once the identity has authenticated to Azure DevOps at
+# least once. Our identity only trusts GitHub OIDC, so it cannot be made to log
+# in from a laptop; this workflow is the way to make it introduce itself and
+# report the id to paste.
+#
+# Run it once (Actions → this workflow → Run workflow), copy the id, add it as a
+# publisher member with the Contributor role. Safe to keep — it only reads its
+# own profile — or delete once publishing works.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    # Must match the federated credential's subject
+    # (repo:opper-ai/opper-vscode:environment:release) or the login is refused.
+    environment: release
+    permissions:
+      id-token: write
+    steps:
+      - name: Sign in to Microsoft Entra ID
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Ask Azure DevOps who this identity is
+        run: |
+          # 499b84ac-1321-427f-aa17-267ca6975798 is the Azure DevOps resource —
+          # the same audience vsce requests when publishing.
+          token=$(az account get-access-token \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+            --query accessToken -o tsv)
+
+          profile=$(curl -sS -H "Authorization: Bearer $token" \
+            "https://vssps.dev.azure.com/_apis/profile/profiles/me?api-version=7.1-preview.3")
+
+          echo "$profile" | jq . || echo "$profile"
+
+          id=$(echo "$profile" | jq -r '.id // empty')
+          if [ -z "$id" ]; then
+            echo "::error::no profile id returned — the identity may not have been able to reach Azure DevOps"
+            exit 1
+          fi
+
+          echo "::notice::Add this as a publisher member with the Contributor role: $id"
+          {
+            echo "## Publisher member id"
+            echo
+            echo '```'
+            echo "$id"
+            echo '```'
+            echo
+            echo "Paste into marketplace.visualstudio.com/manage → Opper → Members → Add, role **Contributor**."
+          } >> "$GITHUB_STEP_SUMMARY"
