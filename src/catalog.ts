@@ -30,9 +30,13 @@ export const DEFAULT_FILTER: CatalogFilter = {
 };
 
 /**
- * What a dynamic route gets when Opper cannot say. The graph picks the model
- * per request, so these are the only honest option: floors low enough that
- * VS Code's history trimming stays inside whatever model answers.
+ * Last resort for a dynamic route.
+ *
+ * The gateway reports `context_length` / `opper.max_output_tokens` for a route
+ * as the smallest any of its candidates offers — a floor it can actually keep.
+ * These constants apply only when it omits them, which it does when a candidate
+ * cannot be resolved server-side (an org-scoped BYOK model, say). Deliberately
+ * modest: too high and VS Code packs a context the served model rejects.
  */
 const ROUTE_CONTEXT = 128_000;
 const ROUTE_MAX_OUTPUT = 8_192;
