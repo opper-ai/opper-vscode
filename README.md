@@ -25,7 +25,7 @@ Without a key the extension contributes nothing at all — the model list is sco
 `OPPER_API_KEY` in the environment is used **only when no key is stored** — it is a fallback for devcontainers and CI, never an override. Run **Opper: Manage API Key** at any time to see which key is in effect and what it scopes you to:
 
 ```
-Opper · jose@opper.ai · project n8n-test · 17 models
+Opper · acme-corp · project production · 17 models
 ```
 
 That line leads with the project because comply rules — model allowlists above all — are scoped to the key's project. A picker showing every model when a project allowlist should have cut it to a handful is almost always a key pointing at a different project, and the status line is the fastest way to see it. If the key came from the environment the line says so.
@@ -72,7 +72,7 @@ rows — the entries most specific to you ending up hardest to find.
 
 **Images in tool results.** An OpenAI `tool` message carries text only. If a tool returns an image, a visible placeholder naming the media type is sent in its place rather than dropping it silently — a model that never sees the screenshot a tool returned otherwise answers confidently and wrongly, with nothing in the transcript explaining why.
 
-**Embedding models are excluded** using the entry's `opper.type`. Capability data cannot substitute: a large share of the catalogue's embedding rows claim a `tools` capability, so a capabilities-only filter would offer `text-embedding-3-large` as a tool-calling chat model.
+**Embedding models are excluded** using the entry's `opper.type`, which is the reliable discriminator — the chat and embedding catalogues share this listing, and capability metadata alone does not separate them.
 
 ## Development
 

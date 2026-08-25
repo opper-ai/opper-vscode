@@ -42,15 +42,15 @@ test('keys are trimmed, since they arrive via paste', () => {
 });
 
 const ME = {
-	organization: { name: 'jose@opper.ai', plan: 'control_plane' },
-	project: { name: 'n8n-test' },
+	organization: { name: 'acme-corp', plan: 'control_plane' },
+	project: { name: 'production' },
 	blocked: false,
 };
 
 test('the status line leads with the project, because that is what scopes comply', () => {
 	assert.strictEqual(
 		formatIdentity(ME, 17, 'stored'),
-		'Opper · jose@opper.ai · project n8n-test · 17 models',
+		'Opper · acme-corp · project production · 17 models',
 	);
 });
 
@@ -58,15 +58,15 @@ test('a key sourced from the environment says so', () => {
 	// Otherwise the user cannot tell why the key they typed is not in effect.
 	assert.strictEqual(
 		formatIdentity(ME, 574, 'environment'),
-		'Opper · jose@opper.ai · project n8n-test · 574 models · key from $OPPER_API_KEY',
+		'Opper · acme-corp · project production · 574 models · key from $OPPER_API_KEY',
 	);
 });
 
 test('an org-scoped key is called out, since no project allowlist applies to it', () => {
-	const orgKey = { organization: { name: 'jose@opper.ai' } };
+	const orgKey = { organization: { name: 'acme-corp' } };
 	assert.strictEqual(
 		formatIdentity(orgKey, 574, 'stored'),
-		'Opper · jose@opper.ai · org-scoped key (no project) · 574 models',
+		'Opper · acme-corp · org-scoped key (no project) · 574 models',
 	);
 });
 
