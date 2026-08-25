@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 
 import { OpperApiError, OpperClient, type OpenAIToolCallDelta } from './api';
 import { DEFAULT_FILTER, toChatInformation, type CatalogFilter } from './catalog';
-import { enrich, needsEnrichment } from './enrich';
 import { toOpenAIMessages, toOpenAITools } from './messages';
 import type { Auth } from './auth';
 
@@ -45,18 +44,10 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 
 		const client = new OpperClient(baseUrl(), key);
 		try {
-			const signal = abortSignal(token);
-			let entries = await client.listModels(signal);
-			// A gateway that predates the capability fields would otherwise
-			// report every model as incapable of tool calling, quietly taking
-			// Opper out of agent mode.
-			if (needsEnrichment(entries)) {
-				try {
-					entries = enrich(entries, await client.listCatalog(signal));
-				} catch (err) {
-					console.warn('[opper] capability backfill failed', err);
-				}
-			}
+			// The one and only source of which models exist. Authenticated and
+			// comply-scoped server-side, so a model the org's allowlist denies
+			// is never returned and cannot be reintroduced from anywhere else.
+			const entries = await client.listModels(abortSignal(token));
 			return toChatInformation(entries, readFilter());
 		} catch (err) {
 			// Never throw out of discovery: a failure here blanks the whole

@@ -12,11 +12,15 @@ Built on the [Language Model Chat Provider API](https://code.visualstudio.com/ap
 - **Residency and ZDR in the picker.** Each entry's detail line carries where it is hosted and whether zero data retention is on, and `opper.euOnly` / `opper.zdrOnly` reduce the list to what your policy allows.
 - **Observability and governance.** Every Copilot turn becomes an Opper trace, is billed against your org, and is filtered server-side by your comply allowlist — a model your policy denies is never offered in the first place.
 
+The extension talks to exactly two endpoints, both authenticated: `/v3/compat/models` to discover, `/v3/compat/chat/completions` to answer. There is no second, unscoped source of models, so what the picker shows can never be wider than what your API key is allowed to call.
+
 ## Setup
 
 1. Install the extension.
 2. Run **Opper: Manage API Key** and paste a key from [platform.opper.ai](https://platform.opper.ai). It is stored in VS Code's `SecretStorage` (the OS keychain), never in `settings.json`.
 3. Open Chat, click the model picker, and choose an Opper model.
+
+Without a key the extension contributes nothing at all — the model list is scoped to the key, so there is no anonymous mode.
 
 `OPPER_API_KEY` in the environment is used if set, for devcontainers and CI where there is no keychain and nobody to answer a prompt.
 
@@ -41,8 +45,6 @@ Built on the [Language Model Chat Provider API](https://code.visualstudio.com/ap
 **Images in tool results.** An OpenAI `tool` message carries text only. If a tool returns an image, a visible placeholder naming the media type is sent in its place rather than dropping it silently — a model that never sees the screenshot a tool returned otherwise answers confidently and wrongly, with nothing in the transcript explaining why.
 
 **Embedding models are excluded** using the entry's `opper.type`. Capability data cannot substitute: a large share of the catalogue's embedding rows claim a `tools` capability, so a capabilities-only filter would offer `text-embedding-3-large` as a tool-calling chat model.
-
-**Older gateways are backfilled.** `opper.type`, `opper.capabilities` and `opper.max_output_tokens` are recent additions to `/v3/compat/models`. Against a gateway that predates them, reading the response literally would say every model is incapable of calling tools — silently removing Opper from agent mode — so the same facts are fetched from the public `/v3/models` catalogue and merged in. Measured against the live catalogue that is the difference between 0 and 550 tool-calling models. Where the gateway does report a field it wins: it applies comply scoping and pool folding the public catalogue knows nothing about.
 
 ## Development
 
