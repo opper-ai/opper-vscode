@@ -208,13 +208,13 @@ function abortSignal(token: vscode.CancellationToken): AbortSignal {
 	return controller.signal;
 }
 
-function baseUrl(): string {
+export function baseUrl(): string {
 	return (
 		vscode.workspace.getConfiguration('opper').get<string>('baseUrl') ?? 'https://api.opper.ai'
 	);
 }
 
-function readFilter(): CatalogFilter {
+export function readFilter(): CatalogFilter {
 	const cfg = vscode.workspace.getConfiguration('opper');
 	return {
 		showPools: cfg.get('showPools', DEFAULT_FILTER.showPools),

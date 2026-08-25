@@ -48,6 +48,15 @@ export interface OpperCompatModel {
 	opper?: OpperMeta;
 }
 
+/** Identity and spend snapshot for the calling key, from `GET /v3/me`. */
+export interface OpperIdentity {
+	organization?: { name?: string; plan?: string };
+	project?: { name?: string };
+	balance?: { balance_dollars?: number };
+	blocked?: boolean;
+	block_reason?: 'balance_exhausted' | 'project_spend_cap_hit' | 'org_spend_cap_hit' | string;
+}
+
 export interface OpenAIToolCallDelta {
 	index: number;
 	id?: string;
@@ -114,6 +123,23 @@ export class OpperClient {
 		}
 		const body = (await res.json()) as { data?: OpperCompatModel[] };
 		return body.data ?? [];
+	}
+
+	/**
+	 * Reads the identity the key resolves to. Comply rules are scoped to the
+	 * key's PROJECT, so which project a key belongs to decides which allowlist
+	 * applies — and that is invisible from the model list alone.
+	 */
+	async getMe(signal?: AbortSignal): Promise<OpperIdentity> {
+		const res = await fetch(this.url('/v3/me'), {
+			method: 'GET',
+			headers: this.headers(),
+			signal,
+		});
+		if (!res.ok) {
+			throw await toApiError(res, 'reading the key identity');
+		}
+		return (await res.json()) as OpperIdentity;
 	}
 
 	/**

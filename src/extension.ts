@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 
 import { Auth } from './auth';
-import { OpperChatModelProvider } from './provider';
+import { OpperChatModelProvider, baseUrl, readFilter } from './provider';
+import { manageCommand } from './status';
 
 /** Must match `contributes.languageModelChatProviders[].vendor`. */
 const VENDOR = 'opper';
@@ -21,14 +22,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
 		// The gear icon next to "Opper" in the model picker — declared as
 		// contributes.languageModelChatProviders[].managementCommand.
-		vscode.commands.registerCommand('opper.manage', async () => {
-			const key = await auth.promptForApiKey();
-			if (key) {
-				void vscode.window.showInformationMessage(
-					'Opper API key saved. Your models are in the chat model picker.',
-				);
-			}
-		}),
+		vscode.commands.registerCommand('opper.manage', () =>
+			manageCommand(auth, baseUrl(), readFilter()),
+		),
 
 		vscode.commands.registerCommand('opper.signOut', async () => {
 			await auth.clear();

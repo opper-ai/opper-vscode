@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { resolveKey, type ResolvedKey } from './identity';
+
 const SECRET_KEY = 'opper.apiKey';
 
 /**
@@ -12,18 +14,22 @@ export class Auth {
 
 	constructor(private readonly secrets: vscode.SecretStorage) {}
 
-	/** The stored key, or undefined. Never prompts. */
-	async peekApiKey(): Promise<string | undefined> {
-		// An env var is the escape hatch for devcontainers and CI, where there
-		// is no keychain and nobody to answer a prompt.
-		const fromEnv = process.env.OPPER_API_KEY?.trim();
-		if (fromEnv) {
-			return fromEnv;
-		}
-		return (await this.secrets.get(SECRET_KEY))?.trim() || undefined;
+	/**
+	 * The key to use, and where it came from. Never prompts.
+	 *
+	 * A stored key wins over `OPPER_API_KEY` — see resolveKey. The reverse
+	 * silently discards what the user typed into "Manage API Key".
+	 */
+	async resolve(): Promise<ResolvedKey | undefined> {
+		return resolveKey(await this.secrets.get(SECRET_KEY), process.env.OPPER_API_KEY);
 	}
 
-	/** The stored key, asking for one if there is none. */
+	/** Just the key, for call paths that do not care about its origin. */
+	async peekApiKey(): Promise<string | undefined> {
+		return (await this.resolve())?.key;
+	}
+
+	/** The key, asking for one if there is none. */
 	async requireApiKey(): Promise<string | undefined> {
 		const existing = await this.peekApiKey();
 		if (existing) {
