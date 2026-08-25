@@ -1,0 +1,106 @@
+{
+  "name": "opper-vscode",
+  "displayName": "Opper",
+  "description": "Use any of Opper's 300+ models — plus your pools and dynamic routes — in VS Code chat, routed through the EU-hosted Opper gateway.",
+  "version": "0.1.0",
+  "publisher": "opperai",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "ai",
+    "chat",
+    "copilot",
+    "language model",
+    "byok",
+    "opper",
+    "gdpr"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opper-ai/opper-vscode.git"
+  },
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "opper",
+        "displayName": "Opper",
+        "managementCommand": "opper.manage"
+      }
+    ],
+    "commands": [
+      {
+        "command": "opper.manage",
+        "title": "Opper: Manage API Key",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.signOut",
+        "title": "Opper: Sign Out",
+        "category": "Opper"
+      }
+    ],
+    "configuration": {
+      "title": "Opper",
+      "properties": {
+        "opper.baseUrl": {
+          "type": "string",
+          "default": "https://api.opper.ai",
+          "markdownDescription": "Base URL of the Opper API. Point this at a self-hosted or regional gateway if you run one; the extension appends `/v3/...` itself."
+        },
+        "opper.showPools": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "List Opper **pools** — bare model names such as `claude-sonnet-4.5` that load-balance across every provider serving that model. A pool only advertises a capability its every member has."
+        },
+        "opper.showDynamicRoutes": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "List your org's deployed **dynamic routes** as `dynamic/<name>`. The routing graph picks the model per request."
+        },
+        "opper.dynamicRouteToolCalling": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Advertise dynamic routes as tool-calling capable. Opper cannot know this ahead of time — the graph picks the model per request — so this is a promise you make on your route's behalf. Turn it off if a route can land on a model without tool support; the route then stays out of agent mode instead of failing mid-turn."
+        },
+        "opper.euOnly": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Only list models Opper reports as hosted in the EU (`opper.region == \"EU\"`). Pools are included only when *every* member is EU-hosted."
+        },
+        "opper.zdrOnly": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Only list models with zero data retention by default (`opper.zdr == \"always\"`). Models where ZDR is merely available under enterprise terms are excluded."
+        },
+        "opper.modelFilter": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "If non-empty, list only model ids containing one of these substrings (case-insensitive), e.g. `[\"claude\", \"gpt-5\"]`. Keeps the picker short when the full catalogue is more than you need."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc -p . --noEmit false && node --test test/*.test.js",
+    "vscode:prepublish": "npm run typecheck && node esbuild.js --production"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.104.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}

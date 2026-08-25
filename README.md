@@ -1,0 +1,61 @@
+# Opper for VS Code
+
+Contributes Opper's catalogue to the VS Code chat model picker, so GitHub Copilot Chat — including agent mode — runs on any model Opper can reach, through the EU-hosted Opper gateway.
+
+Built on the [Language Model Chat Provider API](https://code.visualstudio.com/api/extension-guides/ai/language-model-chat-provider) (VS Code 1.104+). Models contributed this way need **no Copilot subscription and no GitHub sign-in**.
+
+## What it adds over pointing the built-in "OpenAI Compatible" provider at Opper
+
+- **Discovery.** The 300+ model catalogue is fetched at runtime from `/v3/compat/models`. No hand-typed model IDs, no list to keep in sync.
+- **Pools.** A bare name like `claude-sonnet-4.5` load-balances across every provider serving that model. The picker shows it as its own entry, next to the pinned `anthropic/claude-sonnet-4.5`.
+- **Your dynamic routes.** Deployed routing graphs appear as `dynamic/<name>`. The graph picks the model per request; picking one in the model picker is the same as sending that id to the API.
+- **Residency and ZDR in the picker.** Each entry's detail line carries where it is hosted and whether zero data retention is on, and `opper.euOnly` / `opper.zdrOnly` reduce the list to what your policy allows.
+- **Observability and governance.** Every Copilot turn becomes an Opper trace, is billed against your org, and is filtered server-side by your comply allowlist — a model your policy denies is never offered in the first place.
+
+## Setup
+
+1. Install the extension.
+2. Run **Opper: Manage API Key** and paste a key from [platform.opper.ai](https://platform.opper.ai). It is stored in VS Code's `SecretStorage` (the OS keychain), never in `settings.json`.
+3. Open Chat, click the model picker, and choose an Opper model.
+
+`OPPER_API_KEY` in the environment is used if set, for devcontainers and CI where there is no keychain and nobody to answer a prompt.
+
+## Settings
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `opper.baseUrl` | `https://api.opper.ai` | Point at a self-hosted or regional gateway. |
+| `opper.showPools` | `true` | List bare load-balancing names. |
+| `opper.showDynamicRoutes` | `true` | List your org's deployed routes. |
+| `opper.dynamicRouteToolCalling` | `true` | Whether routes are offered in agent mode (see below). |
+| `opper.euOnly` | `false` | Only EU-hosted models. |
+| `opper.zdrOnly` | `false` | Only models with zero data retention on by default. |
+| `opper.modelFilter` | `[]` | Substrings to narrow a long picker, e.g. `["claude", "gpt-5"]`. |
+
+## Things worth knowing
+
+**Dynamic routes and agent mode.** Opper cannot say ahead of time whether a route supports tool calling — the graph picks the model per request. `opper.dynamicRouteToolCalling` is therefore a promise you make on your route's behalf. Leave it on and a route is usable in agent mode; turn it off if a route can land on a model without tool support, and the route stays out of agent mode rather than failing mid-turn.
+
+**Token counts are estimates.** VS Code asks for a token count on every keystroke to budget context, so it has to be local. Opper spans 300+ models across a dozen tokenizers, and no single exact count exists — this uses the same `chars/4` heuristic the gateway's own `countTokens` falls back to, good to roughly ±20% on prose. `maxInputTokens` is reported as the context window *minus* the model's output cap, so a full context still leaves the reply room.
+
+**Images in tool results.** An OpenAI `tool` message carries text only. If a tool returns an image, a visible placeholder naming the media type is sent in its place rather than dropping it silently — a model that never sees the screenshot a tool returned otherwise answers confidently and wrongly, with nothing in the transcript explaining why.
+
+**Embedding models are excluded** using the entry's `opper.type`. Capability data cannot substitute: a large share of the catalogue's embedding rows claim a `tools` capability, so a capabilities-only filter would offer `text-embedding-3-large` as a tool-calling chat model.
+
+## Development
+
+```bash
+npm install
+npm run compile     # bundle to dist/ with esbuild
+npm run watch       # rebuild on change
+npm run typecheck
+npm test            # compiles, then runs node --test over the pure modules
+```
+
+Press <kbd>F5</kbd> in VS Code to launch an Extension Development Host with the extension loaded.
+
+The layers that carry the real risk — SSE framing and catalogue mapping — have no `vscode` import and are covered by `node --test`. `src/sse.ts` in particular guards a regression class this wire format has produced before: `data:{...}` with no space after the colon is legal SSE, and slicing a fixed `"data: ".length` drops those frames, producing an empty completion behind an HTTP 200 rather than an error.
+
+## License
+
+MIT
