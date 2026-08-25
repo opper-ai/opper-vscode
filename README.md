@@ -4,7 +4,7 @@ Adds [Opper](https://opper.ai)'s models to the VS Code chat model picker, so Cop
 
 Built on the [Language Model Chat Provider API](https://code.visualstudio.com/api/extension-guides/ai/language-model-chat-provider) (VS Code 1.104+). Models added this way need **no Copilot subscription and no GitHub sign-in**.
 
-- **300+ models, discovered at runtime.** No hardcoded model ids.
+- **700+ models, discovered at runtime.** No hardcoded model ids.
 - **Pools** — a bare name like `claude-sonnet-4.5` that load-balances across every provider serving it.
 - **Your dynamic routes** — deployed routing graphs, as `dynamic/<name>`. The graph picks the model per request.
 - **Residency and ZDR in the picker**, with `opper.euOnly` / `opper.zdrOnly` to narrow the list.
