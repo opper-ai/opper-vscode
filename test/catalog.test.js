@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { toChatInformation, DEFAULT_FILTER } = require('../out/catalog.js');
+const { toChatInformation, kindQuery, DEFAULT_FILTER } = require('../out/catalog.js');
 
 const CHAT = {
 	id: 'anthropic/claude-sonnet-4.5',
@@ -99,8 +99,9 @@ test('a model with no context figure at all is skipped, not invented', () => {
 });
 
 test('pool and pinned model stay distinguishable in the picker', () => {
+	// Pool first — see the ordering test below.
 	const ids = map([CHAT, POOL]).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5', 'claude-sonnet-4.5']);
+	assert.deepStrictEqual(ids, ['claude-sonnet-4.5', 'anthropic/claude-sonnet-4.5']);
 	const pool = byId(map([CHAT, POOL]))['claude-sonnet-4.5'];
 	assert.match(pool.detail, /Pool of 2/);
 	assert.strictEqual(pool.family, 'opper-pool');
@@ -134,11 +135,11 @@ test('modelFilter matches on substring, case-insensitively', () => {
 test('pools and routes can be hidden independently', () => {
 	assert.deepStrictEqual(
 		map([CHAT, POOL, ROUTE], { showPools: false }).map((m) => m.id),
-		['anthropic/claude-sonnet-4.5', 'dynamic/support'],
+		['dynamic/support', 'anthropic/claude-sonnet-4.5'],
 	);
 	assert.deepStrictEqual(
 		map([CHAT, POOL, ROUTE], { showDynamicRoutes: false }).map((m) => m.id),
-		['anthropic/claude-sonnet-4.5', 'claude-sonnet-4.5'],
+		['claude-sonnet-4.5', 'anthropic/claude-sonnet-4.5'],
 	);
 });
 
@@ -167,5 +168,56 @@ test('residency filters do not silently hide the org\'s own routes', () => {
 	assert.deepStrictEqual(
 		map([ROUTE], { euOnly: true, zdrOnly: true }).map((m) => m.id),
 		['dynamic/support'],
+	);
+});
+
+test('all kinds selected sends no ?type= at all', () => {
+	assert.strictEqual(kindQuery(DEFAULT_FILTER), undefined);
+});
+
+test('a subset becomes the API\'s own ?type= filter', () => {
+	assert.strictEqual(
+		kindQuery({ ...DEFAULT_FILTER, showModels: false }),
+		'pool,dynamic_route',
+	);
+	assert.strictEqual(
+		kindQuery({ ...DEFAULT_FILTER, showModels: false, showPools: false }),
+		'dynamic_route',
+	);
+});
+
+test('no kinds selected returns null, never an empty ?type=', () => {
+	// `?type=` with an empty value means "every kind" to the gateway, so
+	// sending it would return the whole catalogue — the exact opposite of what
+	// unticking everything asks for. The caller must skip the request instead.
+	assert.strictEqual(
+		kindQuery({ ...DEFAULT_FILTER, showModels: false, showPools: false, showDynamicRoutes: false }),
+		null,
+	);
+});
+
+test('unticking models leaves only pools and routes', () => {
+	const ids = map([CHAT, POOL, ROUTE], { showModels: false }).map((m) => m.id);
+	assert.deepStrictEqual(ids, ['dynamic/support', 'claude-sonnet-4.5']);
+});
+
+test('routes and pools sort above concrete models', () => {
+	// The gateway returns the reverse, which buries an org's handful of routes
+	// and pools under several hundred catalog rows.
+	const ids = map([CHAT, POOL, ROUTE]).map((m) => m.id);
+	assert.deepStrictEqual(ids, [
+		'dynamic/support',
+		'claude-sonnet-4.5',
+		'anthropic/claude-sonnet-4.5',
+	]);
+});
+
+test('ordering is stable among concrete models', () => {
+	// The gateway sorts featured-first; that must survive the kind grouping.
+	const a = { ...CHAT, id: 'z/featured' };
+	const b = { ...CHAT, id: 'a/ordinary' };
+	assert.deepStrictEqual(
+		map([a, b, POOL]).map((m) => m.id),
+		['claude-sonnet-4.5', 'z/featured', 'a/ordinary'],
 	);
 });

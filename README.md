@@ -35,12 +35,30 @@ That line leads with the project because comply rules — model allowlists above
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `opper.baseUrl` | `https://api.opper.ai` | Point at a self-hosted or regional gateway. |
+| `opper.showModels` | `true` | List concrete catalog models (`anthropic/claude-sonnet-4.5`). |
 | `opper.showPools` | `true` | List bare load-balancing names. |
 | `opper.showDynamicRoutes` | `true` | List your org's deployed routes. |
 | `opper.dynamicRouteToolCalling` | `true` | Whether routes are offered in agent mode (see below). |
 | `opper.euOnly` | `false` | Only EU-hosted models. |
 | `opper.zdrOnly` | `false` | Only models with zero data retention on by default. |
 | `opper.modelFilter` | `[]` | Substrings to narrow a long picker, e.g. `["claude", "gpt-5"]`. |
+
+### Showing only pools and routes
+
+Untick **Show Models** and leave the other two on. The picker then lists only
+Opper's own routing constructs — your pools and your deployed `dynamic/<name>`
+routes — which is the useful view when routing decisions live in Opper rather
+than in the editor.
+
+This maps straight onto the gateway's own `?type=` filter, so the narrowing
+happens server-side rather than by downloading 574 entries and discarding most
+of them. Untick all three and the extension skips the request entirely: `?type=`
+with an empty value means *every* kind to the gateway, so sending it would
+return the whole catalogue.
+
+Routes sort first, then pools, then concrete models. The gateway returns the
+reverse, which buries an org's handful of routes under several hundred catalog
+rows — the entries most specific to you ending up hardest to find.
 
 ## Things worth knowing
 

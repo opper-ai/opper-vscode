@@ -55,6 +55,11 @@
           "default": "https://api.opper.ai",
           "markdownDescription": "Base URL of the Opper API. Point this at a self-hosted or regional gateway if you run one; the extension appends `/v3/...` itself."
         },
+        "opper.showModels": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "List concrete catalog models — a specific provider's row, e.g. `anthropic/claude-sonnet-4.5`. Untick this and leave **Show Pools** / **Show Dynamic Routes** on to reduce the picker to Opper's own routing constructs."
+        },
         "opper.showPools": {
           "type": "boolean",
           "default": true,

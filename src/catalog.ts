@@ -10,6 +10,7 @@ import type * as vscode from 'vscode';
 import type { OpperCompatModel } from './api';
 
 export interface CatalogFilter {
+	showModels: boolean;
 	showPools: boolean;
 	showDynamicRoutes: boolean;
 	dynamicRouteToolCalling: boolean;
@@ -19,6 +20,7 @@ export interface CatalogFilter {
 }
 
 export const DEFAULT_FILTER: CatalogFilter = {
+	showModels: true,
 	showPools: true,
 	showDynamicRoutes: true,
 	dynamicRouteToolCalling: true,
@@ -38,18 +40,57 @@ const ROUTE_MAX_OUTPUT = 8_192;
 /** Reserved for the reply when a model does not report its own output cap. */
 const FALLBACK_OUTPUT_RESERVE = 4_096;
 
+/**
+ * The `?type=` value for a filter, or undefined when every kind is wanted.
+ *
+ * Returns null when NOTHING is selected. That case cannot be expressed as a
+ * query parameter: `?type=` with an empty value means "every kind" to the
+ * gateway (an absent filter matches all), so sending it would return the whole
+ * catalogue — the exact opposite of what was asked. The caller must skip the
+ * request instead.
+ */
+export function kindQuery(filter: CatalogFilter): string | undefined | null {
+	const kinds: string[] = [];
+	if (filter.showModels) {
+		kinds.push('model');
+	}
+	if (filter.showPools) {
+		kinds.push('pool');
+	}
+	if (filter.showDynamicRoutes) {
+		kinds.push('dynamic_route');
+	}
+	if (kinds.length === 0) {
+		return null;
+	}
+	return kinds.length === 3 ? undefined : kinds.join(',');
+}
+
+/** Sort rank: Opper's own routing constructs first, concrete rows after. */
+function kindRank(kind: string): number {
+	return kind === 'dynamic_route' ? 0 : kind === 'pool' ? 1 : 2;
+}
+
 export function toChatInformation(
 	entries: OpperCompatModel[],
 	filter: CatalogFilter,
 ): vscode.LanguageModelChatInformation[] {
-	const out: vscode.LanguageModelChatInformation[] = [];
+	const out: { info: vscode.LanguageModelChatInformation; rank: number }[] = [];
 	for (const entry of entries) {
 		const info = mapEntry(entry, filter);
 		if (info) {
-			out.push(info);
+			out.push({ info, rank: kindRank(entry.opper?.kind ?? 'model') });
 		}
 	}
-	return out;
+	// Routes, then pools, then concrete models. The gateway returns the reverse,
+	// which buries an org's handful of routes and pools under several hundred
+	// catalog rows — the entries most specific to this org end up hardest to
+	// find. Stable within a rank, so the gateway's featured-first ordering
+	// survives among the concrete models.
+	return out
+		.map((e, i) => ({ ...e, i }))
+		.sort((a, b) => a.rank - b.rank || a.i - b.i)
+		.map((e) => e.info);
 }
 
 function mapEntry(
@@ -59,6 +100,9 @@ function mapEntry(
 	const meta = entry.opper;
 	const kind = meta?.kind ?? 'model';
 
+	if (kind === 'model' && !filter.showModels) {
+		return undefined;
+	}
 	if (kind === 'pool' && !filter.showPools) {
 		return undefined;
 	}

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { OpperClient } from './api';
-import { DEFAULT_FILTER, toChatInformation, type CatalogFilter } from './catalog';
+import { DEFAULT_FILTER, kindQuery, toChatInformation, type CatalogFilter } from './catalog';
 import { formatIdentity, identityWarning } from './identity';
 import type { Auth } from './auth';
 
@@ -26,7 +26,7 @@ export async function describeCurrent(
 	const client = new OpperClient(baseUrl, resolved.key);
 	// One round-trip each, in parallel — this runs on an explicit user action,
 	// never on the discovery path.
-	const [me, entries] = await Promise.all([client.getMe(), client.listModels()]);
+	const [me, entries] = await Promise.all([client.getMe(), client.listModels(kindQuery(filter) ?? undefined)]);
 	const count = toChatInformation(entries, filter).length;
 	return {
 		summary: formatIdentity(me, count, resolved.source),

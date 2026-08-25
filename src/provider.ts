@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { OpperApiError, OpperClient, type OpenAIToolCallDelta } from './api';
-import { DEFAULT_FILTER, toChatInformation, type CatalogFilter } from './catalog';
+import { DEFAULT_FILTER, kindQuery, toChatInformation, type CatalogFilter } from './catalog';
 import { toOpenAIMessages, toOpenAITools } from './messages';
 import type { Auth } from './auth';
 
@@ -44,11 +44,18 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 
 		const client = new OpperClient(baseUrl(), key);
 		try {
+			const filter = readFilter();
+			const kinds = kindQuery(filter);
+			if (kinds === null) {
+				// Every kind unticked. Skip the request rather than send an
+				// empty ?type=, which the gateway reads as "all kinds".
+				return [];
+			}
 			// The one and only source of which models exist. Authenticated and
 			// comply-scoped server-side, so a model the org's allowlist denies
 			// is never returned and cannot be reintroduced from anywhere else.
-			const entries = await client.listModels(abortSignal(token));
-			return toChatInformation(entries, readFilter());
+			const entries = await client.listModels(kinds, abortSignal(token));
+			return toChatInformation(entries, filter);
 		} catch (err) {
 			// Never throw out of discovery: a failure here blanks the whole
 			// picker, including other vendors' models.
@@ -217,6 +224,7 @@ export function baseUrl(): string {
 export function readFilter(): CatalogFilter {
 	const cfg = vscode.workspace.getConfiguration('opper');
 	return {
+		showModels: cfg.get('showModels', DEFAULT_FILTER.showModels),
 		showPools: cfg.get('showPools', DEFAULT_FILTER.showPools),
 		showDynamicRoutes: cfg.get('showDynamicRoutes', DEFAULT_FILTER.showDynamicRoutes),
 		dynamicRouteToolCalling: cfg.get(

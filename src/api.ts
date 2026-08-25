@@ -112,8 +112,9 @@ export class OpperClient {
 	 * deployed dynamic routes. Comply-scoped server-side, so a model this org
 	 * is not allowed to reach never comes back in the first place.
 	 */
-	async listModels(signal?: AbortSignal): Promise<OpperCompatModel[]> {
-		const res = await fetch(this.url('/v3/compat/models'), {
+	async listModels(kinds?: string, signal?: AbortSignal): Promise<OpperCompatModel[]> {
+		const path = kinds ? `/v3/compat/models?type=${encodeURIComponent(kinds)}` : '/v3/compat/models';
+		const res = await fetch(this.url(path), {
 			method: 'GET',
 			headers: this.headers(),
 			signal,
