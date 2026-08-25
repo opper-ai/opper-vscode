@@ -19,8 +19,11 @@ on:
 jobs:
   identity:
     runs-on: ubuntu-latest
-    # Must match the federated credential's subject
-    # (repo:opper-ai/opper-vscode:environment:release) or the login is refused.
+    # Must match the federated credential's subject or the login is refused.
+    # This org has immutable OIDC subject claims on, so GitHub presents
+    # repo:opper-ai@145928785/opper-vscode@1346261101:environment:release —
+    # numeric org and repo ids embedded — not the plain repo path. The
+    # federated credential is registered with that exact string.
     environment: release
     permissions:
       id-token: write

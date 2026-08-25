@@ -10,7 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     # `release` gates this on whatever reviewers/rules you put on the
     # environment, and its name is what the Entra federated credential trusts —
-    # so a workflow on another branch cannot mint a publishing token.
+    # so a workflow on another branch cannot mint a publishing token. The
+    # credential's subject embeds this org's and repo's numeric ids (immutable
+    # OIDC claims are enabled), so renaming the repo breaks the trust and the
+    # credential has to be updated.
     environment: release
     permissions:
       id-token: write # mint the GitHub OIDC token azure/login exchanges
