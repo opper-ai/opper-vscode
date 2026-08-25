@@ -43,15 +43,19 @@ jobs:
           profile=$(curl -sS -H "Authorization: Bearer $token" \
             "https://vssps.dev.azure.com/_apis/profile/profiles/me?api-version=7.1-preview.3")
 
-          echo "$profile" | jq . || echo "$profile"
-
           id=$(echo "$profile" | jq -r '.id // empty')
           if [ -z "$id" ]; then
-            echo "::error::no profile id returned — the identity may not have been able to reach Azure DevOps"
+            echo "::error::no profile id returned — the identity could not reach Azure DevOps"
             exit 1
           fi
 
-          echo "::notice::Add this as a publisher member with the Contributor role: $id"
+          # Only the id is printed. This repository is public, so run logs and
+          # job summaries are world-readable — the rest of the profile
+          # (display name, email, aliases) has no business being in them. The id
+          # alone is an identifier, not a credential: adding a publisher member
+          # requires Owner rights on the publisher, which knowing an id does not
+          # confer.
+          echo "::notice::Publisher member id: $id"
           {
             echo "## Publisher member id"
             echo
@@ -59,5 +63,5 @@ jobs:
             echo "$id"
             echo '```'
             echo
-            echo "Paste into marketplace.visualstudio.com/manage → Opper → Members → Add, role **Contributor**."
+            echo "marketplace.visualstudio.com/manage → Opper → Members → Add, role **Contributor**."
           } >> "$GITHUB_STEP_SUMMARY"
