@@ -2,6 +2,7 @@
   "name": "opper-vscode",
   "displayName": "Opper",
   "description": "Use any of Opper's 300+ models — plus your pools and dynamic routes — in VS Code chat, routed through the EU-hosted Opper gateway.",
+  "icon": "images/icon.png",
   "version": "0.1.0",
   "publisher": "opperai",
   "license": "MIT",
