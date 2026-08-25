@@ -108,3 +108,36 @@ test('a model absent from the catalogue is passed through untouched', () => {
 	const entry = { id: 'private/byok-model', object: 'model', created: 0, owned_by: 'private', opper: {} };
 	assert.deepStrictEqual(enrich([entry], CATALOG), [entry]);
 });
+
+test('backfill can never add a model the gateway withheld', () => {
+	// /v3/compat/models is comply-scoped to the API key; /v3/models is public
+	// and unscoped. Backfill exists to fill metadata GAPS on entries the
+	// gateway already returned — if it ever merged the two lists, a model the
+	// org's allowlist denies would reappear in the picker and the allowlist
+	// would be bypassed from the client side.
+	const allowed = [
+		{
+			id: 'anthropic/claude-sonnet-4.5',
+			object: 'model',
+			created: 0,
+			owned_by: 'anthropic',
+			context_length: 200000,
+			opper: { region: 'EU' },
+		},
+	];
+	const publicCatalog = [
+		...CATALOG,
+		{ id: 'denied/forbidden-model', type: 'llm', capabilities: ['text', 'tools'], context_window: 128000 },
+	];
+
+	const got = enrich(allowed, publicCatalog);
+	assert.strictEqual(got.length, allowed.length, 'backfill changed the number of models');
+	assert.deepStrictEqual(
+		got.map((m) => m.id),
+		['anthropic/claude-sonnet-4.5'],
+	);
+	assert.ok(
+		!toChatInformation(got, DEFAULT_FILTER).some((m) => m.id === 'denied/forbidden-model'),
+		'a model absent from the comply-scoped list reached the picker',
+	);
+});
