@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Compiles to out/ and runs node --test over the pure modules.
+      - run: npm test
+      # Packaging is part of the contract: a manifest that tests fine can still
+      # fail to package (bad category, missing icon, ignored file).
+      - run: npx @vscode/vsce package --out /tmp/ci.vsix
