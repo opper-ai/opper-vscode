@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { Auth } from './auth';
 import { OpperChatModelProvider, baseUrl, readFilter } from './provider';
-import { manageCommand } from './status';
+import { chooseKinds, manageCommand } from './status';
 
 /** Must match `contributes.languageModelChatProviders[].vendor`. */
 const VENDOR = 'opper';
@@ -25,6 +25,8 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('opper.manage', () =>
 			manageCommand(auth, baseUrl(), readFilter()),
 		),
+
+		vscode.commands.registerCommand('opper.chooseKinds', () => chooseKinds(readFilter())),
 
 		vscode.commands.registerCommand('opper.signOut', async () => {
 			await auth.clear();

@@ -34,6 +34,65 @@ export async function describeCurrent(
 	};
 }
 
+interface KindItem extends vscode.QuickPickItem {
+	setting: 'showModels' | 'showPools' | 'showDynamicRoutes';
+}
+
+/**
+ * Checkboxes for which kinds the picker lists.
+ *
+ * This exists on the gear menu rather than only in Settings because the
+ * question it answers — "how do I see just my routes?" — is asked while
+ * standing in the model picker, and Settings is two navigations away. The
+ * boxes write the same three settings, so either route works and they stay in
+ * sync.
+ */
+export async function chooseKinds(filter: CatalogFilter): Promise<void> {
+	const items: KindItem[] = [
+		{
+			label: 'Models',
+			description: 'Concrete catalog rows — anthropic/claude-sonnet-4.5',
+			setting: 'showModels',
+			picked: filter.showModels,
+		},
+		{
+			label: 'Pools',
+			description: 'Bare names that load-balance across providers — claude-sonnet-4.5',
+			setting: 'showPools',
+			picked: filter.showPools,
+		},
+		{
+			label: 'Dynamic routes',
+			description: "Your org's deployed routing graphs — dynamic/<name>",
+			setting: 'showDynamicRoutes',
+			picked: filter.showDynamicRoutes,
+		},
+	];
+
+	const chosen = await vscode.window.showQuickPick(items, {
+		canPickMany: true,
+		title: 'Opper — what to list in the model picker',
+		placeHolder: 'Untick Models to see only your pools and routes',
+	});
+	if (!chosen) {
+		return; // dismissed — leave the settings alone
+	}
+
+	const cfg = vscode.workspace.getConfiguration('opper');
+	const on = new Set(chosen.map((c) => c.setting));
+	// Written globally: which kinds you want listed is a preference about you,
+	// not about the folder you happen to have open.
+	await Promise.all(
+		items.map((i) => cfg.update(i.setting, on.has(i.setting), vscode.ConfigurationTarget.Global)),
+	);
+
+	if (on.size === 0) {
+		void vscode.window.showWarningMessage(
+			'Opper will list no models at all. Re-open "Opper: Choose What to List" to bring some back.',
+		);
+	}
+}
+
 /**
  * The command behind the gear icon next to "Opper" in the model picker.
  *
@@ -57,18 +116,34 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 		return;
 	}
 
+	const choose = 'Choose what to list…';
+	const settings = 'Open Opper settings…';
 	const replace = 'Replace API key';
 	const signOut = 'Sign out';
-	const picked = await vscode.window.showQuickPick([replace, signOut], {
-		title: current.summary,
-		placeHolder: current.warning ?? 'Opper',
-	});
-	if (picked === replace) {
-		await auth.promptForApiKey();
-		await announce(auth, baseUrl, filter);
-	} else if (picked === signOut) {
-		await auth.clear();
-		void vscode.window.showInformationMessage('Opper API key removed.');
+	const picked = await vscode.window.showQuickPick(
+		[
+			{ label: choose, description: kindSummary(filter) },
+			{ label: settings, description: 'EU-only, ZDR-only, base URL, model filter' },
+			{ label: replace },
+			{ label: signOut },
+		],
+		{ title: current.summary, placeHolder: current.warning ?? 'Opper' },
+	);
+	switch (picked?.label) {
+		case choose:
+			await chooseKinds(filter);
+			break;
+		case settings:
+			await vscode.commands.executeCommand('workbench.action.openSettings', 'opper.');
+			break;
+		case replace:
+			await auth.promptForApiKey();
+			await announce(auth, baseUrl, filter);
+			break;
+		case signOut:
+			await auth.clear();
+			void vscode.window.showInformationMessage('Opper API key removed.');
+			break;
 	}
 }
 
@@ -88,6 +163,21 @@ export async function announce(auth: Auth, baseUrl: string, filter: CatalogFilte
 			`Opper key saved, but checking it failed: ${err instanceof Error ? err.message : String(err)}`,
 		);
 	}
+}
+
+/** "Models, pools, routes" — what the kind checkboxes currently allow. */
+export function kindSummary(filter: CatalogFilter): string {
+	const on: string[] = [];
+	if (filter.showModels) {
+		on.push('models');
+	}
+	if (filter.showPools) {
+		on.push('pools');
+	}
+	if (filter.showDynamicRoutes) {
+		on.push('routes');
+	}
+	return on.length > 0 ? on.join(', ') : 'nothing';
 }
 
 export { DEFAULT_FILTER };

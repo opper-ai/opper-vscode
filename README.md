@@ -45,10 +45,14 @@ That line leads with the project because comply rules — model allowlists above
 
 ### Showing only pools and routes
 
-Untick **Show Models** and leave the other two on. The picker then lists only
-Opper's own routing constructs — your pools and your deployed `dynamic/<name>`
-routes — which is the useful view when routing decisions live in Opper rather
-than in the editor.
+Click the **gear** next to "Opper" in the chat model picker → **Choose what to
+list…** → untick **Models**. Or run **Opper: Choose What to List** from the
+Command Palette, or untick `opper.showModels` in Settings — all three write the
+same preference.
+
+The picker then lists only Opper's own routing constructs — your pools and your
+deployed `dynamic/<name>` routes — which is the useful view when routing
+decisions live in Opper rather than in the editor.
 
 This maps straight onto the gateway's own `?type=` filter, so the narrowing
 happens server-side rather than by downloading 574 entries and discarding most

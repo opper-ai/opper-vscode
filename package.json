@@ -42,6 +42,11 @@
         "category": "Opper"
       },
       {
+        "command": "opper.chooseKinds",
+        "title": "Choose What to List (Models, Pools, Routes)",
+        "category": "Opper"
+      },
+      {
         "command": "opper.signOut",
         "title": "Opper: Sign Out",
         "category": "Opper"
