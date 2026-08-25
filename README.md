@@ -42,6 +42,8 @@ Built on the [Language Model Chat Provider API](https://code.visualstudio.com/ap
 
 **Embedding models are excluded** using the entry's `opper.type`. Capability data cannot substitute: a large share of the catalogue's embedding rows claim a `tools` capability, so a capabilities-only filter would offer `text-embedding-3-large` as a tool-calling chat model.
 
+**Older gateways are backfilled.** `opper.type`, `opper.capabilities` and `opper.max_output_tokens` are recent additions to `/v3/compat/models`. Against a gateway that predates them, reading the response literally would say every model is incapable of calling tools — silently removing Opper from agent mode — so the same facts are fetched from the public `/v3/models` catalogue and merged in. Measured against the live catalogue that is the difference between 0 and 550 tool-calling models. Where the gateway does report a field it wins: it applies comply scoping and pool folding the public catalogue knows nothing about.
+
 ## Development
 
 ```bash

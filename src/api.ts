@@ -4,6 +4,7 @@
  * for the turn itself. Both are OpenAI-shaped.
  */
 
+import type { CatalogRow } from './enrich';
 import { DONE, SSEDecoder, parseChunk } from './sse';
 
 /** The `opper` block on a `/v3/compat/models` entry. */
@@ -114,6 +115,35 @@ export class OpperClient {
 		}
 		const body = (await res.json()) as { data?: OpperCompatModel[] };
 		return body.data ?? [];
+	}
+
+	/**
+	 * Reads the public model catalogue, used only to backfill metadata a
+	 * gateway too old to report it left out. Needs no auth, but the key is sent
+	 * anyway so the request is attributable.
+	 *
+	 * `limit` is explicit because the endpoint pages silently: without it a
+	 * truncated list would read as a shrunken catalogue rather than an error.
+	 */
+	async listCatalog(signal?: AbortSignal): Promise<CatalogRow[]> {
+		const res = await fetch(this.url('/v3/models?limit=2000'), {
+			method: 'GET',
+			headers: this.headers(),
+			signal,
+		});
+		if (!res.ok) {
+			throw await toApiError(res, 'reading the model catalogue');
+		}
+		const body = (await res.json()) as { models?: CatalogRow[]; total?: number };
+		const rows = body.models ?? [];
+		if (typeof body.total === 'number' && body.total > rows.length) {
+			// Backfill is best-effort, so a short read degrades rather than
+			// fails — but it must not do so quietly.
+			console.warn(
+				`[opper] catalogue truncated at ${rows.length} of ${body.total}; some models may be listed without capabilities`,
+			);
+		}
+		return rows;
 	}
 
 	/**
