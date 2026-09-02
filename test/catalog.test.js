@@ -1,7 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { toChatInformation, kindQuery, DEFAULT_FILTER } = require('../out/catalog.js');
+const { toChatInformation, kindQuery, zdrByDefault, DEFAULT_FILTER } = require('../out/catalog.js');
+
+// What `opper.zdr` carries: retention facts, `true` = content is held. ZDR by
+// default means logging is known-off and moderation is not known-on.
+const ZDR = {
+	logging: false,
+	moderation: false,
+	caching: false,
+	training: false,
+	subprocessors: false,
+};
 
 const CHAT = {
 	id: 'anthropic/claude-sonnet-4.5',
@@ -17,7 +27,7 @@ const CHAT = {
 		max_output_tokens: 64000,
 		region: 'EU',
 		country: 'Germany',
-		zdr: 'always',
+		zdr: ZDR,
 		gdpr_residency: 'EU',
 	},
 };
@@ -60,6 +70,7 @@ const ROUTE = {
 const map = (entries, overrides = {}) =>
 	toChatInformation(entries, { ...DEFAULT_FILTER, ...overrides });
 const byId = (list) => Object.fromEntries(list.map((m) => [m.id, m]));
+const withZdr = (id, zdr) => ({ ...CHAT, id, opper: { ...CHAT.opper, zdr } });
 
 test('an embedding model never reaches the chat picker', () => {
 	const ids = map([CHAT, EMBEDDING]).map((m) => m.id);
@@ -110,7 +121,7 @@ test('pool and pinned model stay distinguishable in the picker', () => {
 test('residency and ZDR surface in the picker detail line', () => {
 	const m = map([CHAT])[0];
 	assert.strictEqual(m.detail, 'anthropic · Germany · ZDR');
-	assert.match(m.tooltip, /Zero data retention by default/);
+	assert.match(m.tooltip, /Zero data retention: on by default\./);
 	assert.match(m.tooltip, /\$3\.00 in \/ \$15\.00 out per 1M tokens/);
 });
 
@@ -120,10 +131,61 @@ test('euOnly drops a non-EU model', () => {
 	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5']);
 });
 
-test('zdrOnly treats enterprise-available as not enabled', () => {
-	const ent = { ...CHAT, id: 'x/ent', opper: { ...CHAT.opper, zdr: 'enterprise' } };
-	const ids = map([CHAT, ent], { zdrOnly: true }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5']);
+test('zdrOnly derives "by default" from the retention facts', () => {
+	// Logging must be known-off; moderation must not be known-on. A `null`
+	// (not established, or a pool whose members disagree) only passes on the
+	// moderation side.
+	const moderated = withZdr('x/moderated', { ...ZDR, moderation: true });
+	const unknownLog = withZdr('x/unknown-logging', { ...ZDR, logging: null });
+	const unknownMod = withZdr('x/unknown-moderation', { logging: false, moderation: null });
+	const ids = map([CHAT, moderated, unknownLog, unknownMod], { zdrOnly: true }).map((m) => m.id);
+	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5', 'x/unknown-moderation']);
+});
+
+test('zdrOnly never infers ZDR from a missing, null or malformed field', () => {
+	const missing = withZdr('x/missing', undefined);
+	const nul = withZdr('x/null', null);
+	const junk = withZdr('x/junk', 'yes');
+	assert.deepStrictEqual(map([missing, nul, junk], { zdrOnly: true }), []);
+	assert.strictEqual(map([missing])[0].detail, 'anthropic · Germany');
+});
+
+test('the retired string form still reads: always is on, enterprise is not', () => {
+	// Kept for the rollout window; the string leaves the wire with the facts.
+	const always = withZdr('x/always', 'always');
+	const ent = withZdr('x/ent', 'enterprise');
+	const ids = map([always, ent], { zdrOnly: true }).map((m) => m.id);
+	assert.deepStrictEqual(ids, ['x/always']);
+	assert.strictEqual(map([always])[0].detail, 'anthropic · Germany · ZDR');
+});
+
+test('the tooltip names what blocks ZDR by default', () => {
+	const moderated = withZdr('x/moderated', { ...ZDR, moderation: true });
+	const unknownLog = withZdr('x/unknown-logging', { ...ZDR, logging: null });
+	const got = byId(map([moderated, unknownLog]));
+	assert.match(
+		got['x/moderated'].tooltip,
+		/Not zero data retention by default: moderation holds content\./,
+	);
+	assert.doesNotMatch(got['x/moderated'].detail, /ZDR/);
+	assert.match(
+		got['x/unknown-logging'].tooltip,
+		/Not zero data retention by default: logging retention not established\./,
+	);
+});
+
+test('zdrByDefault: the facts rule, and the retired string', () => {
+	assert.strictEqual(zdrByDefault(ZDR), true);
+	assert.strictEqual(zdrByDefault({ logging: false, moderation: null }), true);
+	assert.strictEqual(zdrByDefault({ logging: false, moderation: true }), false);
+	assert.strictEqual(zdrByDefault({ logging: null, moderation: false }), false);
+	assert.strictEqual(zdrByDefault({ logging: true, moderation: false }), false);
+	assert.strictEqual(zdrByDefault({}), false);
+	assert.strictEqual(zdrByDefault('always'), true);
+	assert.strictEqual(zdrByDefault('enterprise'), false);
+	assert.strictEqual(zdrByDefault(null), false);
+	assert.strictEqual(zdrByDefault(undefined), false);
+	assert.strictEqual(zdrByDefault([]), false);
 });
 
 test('modelFilter matches on substring, case-insensitively', () => {

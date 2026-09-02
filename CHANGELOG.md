@@ -1,5 +1,15 @@
 # Change Log
 
+## 0.1.1
+
+- Reads the new shape of `opper.zdr` on `/v3/compat/models`: an object of
+  retention facts (`logging`, `moderation`, `caching`, `training`,
+  `subprocessors`, each `true` / `false` / `null`) replaces the `always` /
+  `enterprise` string. "ZDR by default" is now derived — logging does not
+  retain content and no moderation layer holds it — for the picker badge, the
+  tooltip and `opper.zdrOnly`. Both shapes are accepted while the string is
+  retired.
+
 ## 0.1.0
 
 Initial release.

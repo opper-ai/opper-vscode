@@ -6,6 +6,24 @@
 
 import { DONE, SSEDecoder, parseChunk } from './sse';
 
+/**
+ * The retention facts behind `opper.zdr`. Each is `true` when content is held
+ * or reaches that pipeline, `false` when it does not, `null` when not
+ * established. A pool carries `null` on any key its members disagree on.
+ */
+export interface ZdrFacts {
+	/** Does operational logging retain content. */
+	logging?: boolean | null;
+	/** Does a moderation layer hold content. */
+	moderation?: boolean | null;
+	/** Is content stored for replay. */
+	caching?: boolean | null;
+	/** Does content reach training pipelines. */
+	training?: boolean | null;
+	/** Can a subprocessor read content. */
+	subprocessors?: boolean | null;
+}
+
 /** The `opper` block on a `/v3/compat/models` entry. */
 export interface OpperMeta {
 	/** What this entry IS — the three things a caller may put in `model`. */
@@ -28,8 +46,12 @@ export interface OpperMeta {
 	max_output_tokens?: number;
 	region?: string;
 	country?: string;
-	/** `always` (ZDR by default) or `enterprise` (available under terms). */
-	zdr?: string;
+	/**
+	 * Retention facts; "ZDR by default" is derived from them, never declared
+	 * (see `zdrByDefault` in catalog.ts). The bare string — `always` /
+	 * `enterprise` — is the retired wire format, accepted while it phases out.
+	 */
+	zdr?: string | ZdrFacts | null;
 	gdpr_residency?: string;
 	verification?: string;
 }
