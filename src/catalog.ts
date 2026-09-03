@@ -7,7 +7,7 @@
  */
 
 import type * as vscode from 'vscode';
-import type { OpperCompatModel } from './api';
+import type { OpperCompatModel, ZdrFacts } from './api';
 
 export interface CatalogFilter {
 	showModels: boolean;
@@ -123,8 +123,7 @@ function mapEntry(
 	if (filter.euOnly && kind !== 'dynamic_route' && meta?.region !== 'EU') {
 		return undefined;
 	}
-	// `enterprise` means ZDR is *available* under terms, not that it is on.
-	if (filter.zdrOnly && kind !== 'dynamic_route' && meta?.zdr !== 'always') {
+	if (filter.zdrOnly && kind !== 'dynamic_route' && !zdrByDefault(meta?.zdr)) {
 		return undefined;
 	}
 	if (filter.modelFilter.length > 0) {
@@ -180,6 +179,52 @@ function familyOf(entry: OpperCompatModel, kind: string): string {
 	return entry.owned_by || 'opper';
 }
 
+/**
+ * Whether an entry is zero-data-retention by default.
+ *
+ * Derived from the `opper.zdr` facts, never declared: operational logging must
+ * be known not to retain content (`logging === false`) and no moderation layer
+ * may be known to hold it (`moderation !== true`). This is the same rule
+ * opper.ai applies. Anything short of that — a `null` where a `false` is
+ * needed, a missing or malformed field — is NOT by default; ZDR is never
+ * inferred from silence.
+ */
+export function zdrByDefault(zdr: unknown): boolean {
+	// The bare string is the retired wire format; `always` meant exactly this.
+	if (zdr === 'always') {
+		return true;
+	}
+	return isZdrFacts(zdr) && zdr.logging === false && zdr.moderation !== true;
+}
+
+function isZdrFacts(zdr: unknown): zdr is ZdrFacts {
+	return typeof zdr === 'object' && zdr !== null && !Array.isArray(zdr);
+}
+
+/** The tooltip line for `opper.zdr`, or undefined when there is nothing to say. */
+function zdrTooltip(zdr: unknown): string | undefined {
+	if (zdrByDefault(zdr)) {
+		return 'Zero data retention: on by default.';
+	}
+	if (typeof zdr === 'string') {
+		// Retired wire format: `enterprise` = available under terms, not on.
+		return zdr ? `Zero data retention: ${zdr}.` : undefined;
+	}
+	if (!isZdrFacts(zdr)) {
+		return undefined;
+	}
+	const why: string[] = [];
+	if (zdr.logging === true) {
+		why.push('logging retains content');
+	} else if (zdr.logging !== false) {
+		why.push('logging retention not established');
+	}
+	if (zdr.moderation === true) {
+		why.push('moderation holds content');
+	}
+	return `Not zero data retention by default: ${why.join(', ')}.`;
+}
+
 /** The one line under the model name in the picker. Residency leads. */
 function detailOf(entry: OpperCompatModel, kind: string): string {
 	const meta = entry.opper;
@@ -197,7 +242,7 @@ function detailOf(entry: OpperCompatModel, kind: string): string {
 	if (where) {
 		bits.push(where);
 	}
-	if (meta?.zdr === 'always') {
+	if (zdrByDefault(meta?.zdr)) {
 		bits.push('ZDR');
 	}
 	return bits.join(' · ');
@@ -225,12 +270,9 @@ function tooltipOf(entry: OpperCompatModel, kind: string): string {
 	if (meta?.gdpr_residency) {
 		lines.push(`GDPR residency: ${meta.gdpr_residency}`);
 	}
-	if (meta?.zdr) {
-		lines.push(
-			meta.zdr === 'always'
-				? 'Zero data retention by default.'
-				: `Zero data retention: ${meta.zdr}.`,
-		);
+	const zdr = zdrTooltip(meta?.zdr);
+	if (zdr) {
+		lines.push(zdr);
 	}
 	if (meta?.verification) {
 		lines.push(`Verification: ${meta.verification.replace(/_/g, ' ')}.`);

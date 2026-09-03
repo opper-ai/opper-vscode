@@ -3,7 +3,7 @@
   "displayName": "Opper",
   "description": "Use any of Opper's 700+ models — plus your pools and dynamic routes — in VS Code chat, routed through the EU-hosted Opper gateway.",
   "icon": "images/icon.png",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "opperai",
   "license": "MIT",
   "engines": {
@@ -88,7 +88,7 @@
         "opper.zdrOnly": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Only list models with zero data retention by default (`opper.zdr == \"always\"`). Models where ZDR is merely available under enterprise terms are excluded."
+          "markdownDescription": "Only list models with zero data retention by default — read from the `opper.zdr` facts: logging does not retain content and no moderation layer holds it. A model whose logging retention is not established is excluded; ZDR is never assumed."
         },
         "opper.modelFilter": {
           "type": "array",
