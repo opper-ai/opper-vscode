@@ -44,7 +44,7 @@ export class Auth {
 		this.busy = true;
 		try {
 			const cfg = vscode.workspace.getConfiguration('opper');
-			const opts = { baseUrl: this.origin(), platformUrl: cfg.get<string>('login.platformUrl') ?? 'https://platform.opper.ai', clientId: cfg.get<string>('login.clientId') ?? '', pilot: cfg.get<boolean>('login.simulator') ?? false };
+			const opts = { baseUrl: this.origin(), platformUrl: cfg.get<string>('login.platformUrl') ?? 'https://platform.opper.ai', clientId: cfg.get<string>('login.clientId') ?? 'opper_app_p-xX3vmCeoZLEZqmycoglw', pilot: cfg.get<boolean>('login.simulator') ?? false };
 			const flow = new DeviceLogin(opts);
 			const s = await this.sessions.read();
 			const previous = renew && s && 'credential' in s ? s.credential : undefined;

@@ -45,9 +45,9 @@ calls. HTTP tests prove the adapter handles its fixtures, not API readiness.
 
 Set `opper.baseUrl` to `https://api.opper.ai`, `opper.login.platformUrl` to
 `https://platform.opper.ai`, and `opper.login.simulator` to `false`.
-Set `opper.login.clientId` to a **registered public OAuth application dedicated
-to VS Code**. Do not put a client secret into the extension or reuse the CLI's
-client identity. No real client ID is bundled in this branch.
+The extension includes the registered public VS Code client ID
+`opper_app_p-xX3vmCeoZLEZqmycoglw`. Remove the simulator's `opper.login.clientId`
+override to use it. Users do not need to register an app or install the CLI.
 
 Run **Opper: Sign In**, complete normal Opper SSO, and choose your organization.
 Then select an allowed model and make a small request. Inspect user, organization,

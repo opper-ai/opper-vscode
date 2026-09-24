@@ -116,7 +116,7 @@
         },
         "opper.login.clientId": {
           "type": "string",
-          "default": "",
+          "default": "opper_app_p-xX3vmCeoZLEZqmycoglw",
           "scope": "application",
           "description": "Registered public OAuth client ID dedicated to VS Code. No client secret."
         },
