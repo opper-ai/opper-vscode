@@ -1,7 +1,7 @@
 {
   "name": "opper-vscode",
   "displayName": "Opper",
-  "description": "Use any of Opper's 700+ models — plus your pools and dynamic routes — in VS Code chat, routed through the EU-hosted Opper gateway.",
+  "description": "Use any of Opper's 700+ models \u2014 plus your pools and dynamic routes \u2014 in VS Code chat, routed through the EU-hosted Opper gateway.",
   "icon": "images/icon.png",
   "version": "0.1.0",
   "publisher": "opperai",
@@ -50,6 +50,21 @@
         "command": "opper.signOut",
         "title": "Opper: Sign Out",
         "category": "Opper"
+      },
+      {
+        "command": "opper.signIn",
+        "title": "Sign In",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.renew",
+        "title": "Renew Sign-in",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.retrySave",
+        "title": "Retry Saving Sign-in",
+        "category": "Opper"
       }
     ],
     "configuration": {
@@ -58,17 +73,18 @@
         "opper.baseUrl": {
           "type": "string",
           "default": "https://api.opper.ai",
-          "markdownDescription": "Base URL of the Opper API. Point this at a self-hosted or regional gateway if you run one; the extension appends `/v3/...` itself."
+          "markdownDescription": "Base URL of the Opper API. Point this at a self-hosted or regional gateway if you run one; the extension appends `/v3/...` itself.",
+          "scope": "application"
         },
         "opper.showModels": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "List concrete catalog models — a specific provider's row, e.g. `anthropic/claude-sonnet-4.5`. Untick this and leave **Show Pools** / **Show Dynamic Routes** on to reduce the picker to Opper's own routing constructs."
+          "markdownDescription": "List concrete catalog models \u2014 a specific provider's row, e.g. `anthropic/claude-sonnet-4.5`. Untick this and leave **Show Pools** / **Show Dynamic Routes** on to reduce the picker to Opper's own routing constructs."
         },
         "opper.showPools": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "List Opper **pools** — bare model names such as `claude-sonnet-4.5` that load-balance across every provider serving that model. A pool only advertises a capability its every member has."
+          "markdownDescription": "List Opper **pools** \u2014 bare model names such as `claude-sonnet-4.5` that load-balance across every provider serving that model. A pool only advertises a capability its every member has."
         },
         "opper.showDynamicRoutes": {
           "type": "boolean",
@@ -78,7 +94,7 @@
         "opper.dynamicRouteToolCalling": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Advertise dynamic routes as tool-calling capable. Opper cannot know this ahead of time — the graph picks the model per request — so this is a promise you make on your route's behalf. Turn it off if a route can land on a model without tool support; the route then stays out of agent mode instead of failing mid-turn."
+          "markdownDescription": "Advertise dynamic routes as tool-calling capable. Opper cannot know this ahead of time \u2014 the graph picks the model per request \u2014 so this is a promise you make on your route's behalf. Turn it off if a route can land on a model without tool support; the route then stays out of agent mode instead of failing mid-turn."
         },
         "opper.euOnly": {
           "type": "boolean",
@@ -97,6 +113,24 @@
           },
           "default": [],
           "markdownDescription": "If non-empty, list only model ids containing one of these substrings (case-insensitive), e.g. `[\"claude\", \"gpt-5\"]`. Keeps the picker short when the full catalogue is more than you need."
+        },
+        "opper.login.clientId": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Registered public OAuth client ID dedicated to VS Code. No client secret."
+        },
+        "opper.login.platformUrl": {
+          "type": "string",
+          "default": "https://platform.opper.ai",
+          "scope": "application",
+          "description": "Trusted browser approval origin."
+        },
+        "opper.login.simulator": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "description": "Enable proposed renewal contract for a loopback simulator only. Not a deployed API contract."
         }
       }
     }
@@ -106,7 +140,8 @@
     "watch": "node esbuild.js --watch",
     "typecheck": "tsc --noEmit",
     "test": "tsc -p . --noEmit false && node --test test/*.test.js",
-    "vscode:prepublish": "npm run typecheck && node esbuild.js --production"
+    "vscode:prepublish": "npm run typecheck && node esbuild.js --production",
+    "prototype:login": "node prototype/server.cjs"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

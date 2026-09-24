@@ -13,6 +13,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	context.subscriptions.push(
 		auth,
+		vscode.commands.registerCommand('opper.signIn', () => run(() => auth.login())),
+		vscode.commands.registerCommand('opper.renew', () => run(() => auth.login(true))),
+		vscode.commands.registerCommand('opper.retrySave', () => run(() => auth.retrySave())),
 		provider,
 		vscode.lm.registerLanguageModelChatProvider(VENDOR, provider),
 
@@ -23,15 +26,15 @@ export function activate(context: vscode.ExtensionContext): void {
 		// The gear icon next to "Opper" in the model picker — declared as
 		// contributes.languageModelChatProviders[].managementCommand.
 		vscode.commands.registerCommand('opper.manage', () =>
-			manageCommand(auth, baseUrl(), readFilter()),
+			run(() => manageCommand(auth, baseUrl(), readFilter())),
 		),
 
 		vscode.commands.registerCommand('opper.chooseKinds', () => chooseKinds(readFilter())),
 
-		vscode.commands.registerCommand('opper.signOut', async () => {
+		vscode.commands.registerCommand('opper.signOut', () => run(async () => {
 			await auth.clear();
-			void vscode.window.showInformationMessage('Opper API key removed.');
-		}),
+			void vscode.window.showInformationMessage('Signed out locally. Server authorization is unchanged.');
+		})),
 
 		// A changed base URL or filter changes the catalogue too.
 		vscode.workspace.onDidChangeConfiguration((e) => {
@@ -44,4 +47,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
 	// Everything is registered through context.subscriptions.
+}
+
+async function run(action: () => Promise<unknown>): Promise<void> {
+	try { await action(); } catch (err) {
+		void vscode.window.showErrorMessage(err instanceof Error ? err.message : 'Opper sign-in failed.');
+	}
 }

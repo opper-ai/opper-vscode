@@ -29,7 +29,7 @@ export async function describeCurrent(
 	const [me, entries] = await Promise.all([client.getMe(), client.listModels(kindQuery(filter) ?? undefined)]);
 	const count = toChatInformation(entries, filter).length;
 	return {
-		summary: formatIdentity(me, count, resolved.source),
+		summary: [formatIdentity(me, count, resolved.source), await auth.sessionSummary()].filter(Boolean).join(' · '),
 		warning: identityWarning(me),
 	};
 }
@@ -107,11 +107,11 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 	} catch (err) {
 		// A key that cannot be checked is still a key worth replacing, so fall
 		// through to the menu rather than dead-ending on the error.
-		current = { summary: `Opper · could not reach ${baseUrl}`, warning: String(err) };
+		current = { summary: (await auth.sessionSummary()) ?? 'Opper · sign-in needs attention', warning: String(err) };
 	}
 
 	if (!current) {
-		await auth.promptForApiKey();
+		await auth.requireApiKey();
 		await announce(auth, baseUrl, filter);
 		return;
 	}
@@ -124,12 +124,18 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 		[
 			{ label: choose, description: kindSummary(filter) },
 			{ label: settings, description: 'EU-only, ZDR-only, base URL, model filter' },
+			{ label: 'Sign in with Opper' },
+			{ label: 'Renew sign-in' },
+			{ label: 'Retry saving sign-in' },
 			{ label: replace },
 			{ label: signOut },
 		],
 		{ title: current.summary, placeHolder: current.warning ?? 'Opper' },
 	);
 	switch (picked?.label) {
+		case 'Sign in with Opper': await auth.login(); break;
+		case 'Renew sign-in': await auth.login(true); break;
+		case 'Retry saving sign-in': await auth.retrySave(); break;
 		case choose:
 			await chooseKinds(filter);
 			break;
@@ -142,7 +148,7 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 			break;
 		case signOut:
 			await auth.clear();
-			void vscode.window.showInformationMessage('Opper API key removed.');
+			void vscode.window.showInformationMessage('Signed out locally. Server authorization is unchanged.');
 			break;
 	}
 }

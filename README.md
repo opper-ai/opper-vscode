@@ -1,5 +1,7 @@
 # Opper for VS Code
 
+Browser login prototype: see [setup, simulator and live SSO checklist](prototype/README.md). No CLI required.
+
 Adds [Opper](https://opper.ai)'s models to the VS Code chat model picker, so Copilot Chat — agent mode included — runs on any model Opper can reach, through the EU-hosted Opper gateway.
 
 Built on the [Language Model Chat Provider API](https://code.visualstudio.com/api/extension-guides/ai/language-model-chat-provider) (VS Code 1.104+). Models added this way need **no Copilot subscription and no GitHub sign-in**.

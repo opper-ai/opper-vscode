@@ -1,3 +1,4 @@
+import { credentialError } from './login-errors';
 import * as vscode from 'vscode';
 
 import { OpperApiError, OpperClient, type OpenAIToolCallDelta } from './api';
@@ -35,15 +36,15 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 		// speculatively, e.g. to populate the picker before anyone has asked
 		// for an Opper model. Prompting for a key here would be a modal out of
 		// nowhere, so an unconfigured provider simply contributes nothing.
-		const key = options.silent
-			? await this.auth.peekApiKey()
-			: await this.auth.requireApiKey();
-		if (!key) {
-			return [];
-		}
-
-		const client = new OpperClient(baseUrl(), key);
 		try {
+			const key = options.silent
+				? await this.auth.peekApiKey()
+				: await this.auth.requireApiKey();
+			if (!key) {
+				return [];
+			}
+
+			const client = new OpperClient(baseUrl(), key);
 			const filter = readFilter();
 			const kinds = kindQuery(filter);
 			if (kinds === null) {
@@ -62,7 +63,7 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 			if (!options.silent) {
 				void vscode.window.showErrorMessage(describe(err));
 			}
-			console.error('[opper] listing models failed', err);
+			// Avoid logging server response bodies or credentials.
 			return [];
 		}
 	}
@@ -76,7 +77,7 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 	): Promise<void> {
 		const key = await this.auth.peekApiKey();
 		if (!key) {
-			throw new Error('No Opper API key configured. Run "Opper: Manage API Key".');
+			throw new Error('No Opper API key configured. Run "Opper: Sign In".');
 		}
 
 		const body: Record<string, unknown> = {
@@ -239,7 +240,7 @@ export function readFilter(): CatalogFilter {
 
 function describe(err: unknown): string {
 	if (err instanceof OpperApiError) {
-		return err.message;
+		return credentialError(err.status, err.body) ?? err.message;
 	}
 	if (err instanceof Error) {
 		return `Opper request failed: ${err.message}`;
