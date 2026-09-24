@@ -48,11 +48,24 @@ export interface OpperCompatModel {
 	opper?: OpperMeta;
 }
 
+export interface BudgetScope {
+	currency?: string;
+	spent_cents?: number;
+	limit_cents?: number | null;
+	remaining_cents?: number | null;
+	limit_scope?: 'project' | 'organization' | null;
+	period_start?: string;
+	period_end?: string;
+}
+
 /** Identity and spend snapshot for the calling key, from `GET /v3/me`. */
 export interface OpperIdentity {
 	organization?: { name?: string; plan?: string };
 	project?: { name?: string };
-	balance?: { balance_dollars?: number };
+	visibility?: { organization_finance?: boolean };
+	project_spend?: BudgetScope;
+	spend?: BudgetScope;
+	balance?: { currency?: string; balance_cents?: number; balance_dollars?: number };
 	blocked?: boolean;
 	block_reason?: 'balance_exhausted' | 'project_spend_cap_hit' | 'org_spend_cap_hit' | string;
 }

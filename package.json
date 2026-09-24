@@ -75,6 +75,11 @@
         "command": "opper.context",
         "title": "Show Last Request Context",
         "category": "Opper"
+      },
+      {
+        "command": "opper.budget",
+        "title": "Show Budget",
+        "category": "Opper"
       }
     ],
     "configuration": {

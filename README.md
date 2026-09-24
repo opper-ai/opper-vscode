@@ -81,6 +81,19 @@ turn is never replayed automatically. **Live rotation remains disabled until the
 backend is deployed and verified.** A failed live sign-in for an expired grant
 still needs the backend rollout; the local simulator can exercise rotation now.
 
-Scoped budget display awaits the backend `/me` contract. Org credits are not
-presented as a personal/project remaining allowance. No API migrations or CLI
-changes are included in this extension branch.
+## Project budget
+
+Run **Opper: Show Budget**, or choose **Show budget** in Account and Models.
+It fetches a fresh `/v3/me` snapshot and shows project spend, remaining allowance
+when a direct project limit exists, and the reporting period. **Refresh budget**
+fetches again. This is a snapshot, not a live spending counter.
+
+Organization credits/spend appear only with an explicit
+`visibility.organization_finance: true`. No project limit means organization
+funding and limits still apply. Organization credits are never presented as a
+personal allowance. Older servers without project details show unavailable;
+missing fields are never treated as zero. Blocked spending shows its reason.
+Switching credentials or API origin closes the budget view.
+
+The scoped fields require the backend `/me` rollout; fixture checks do not prove
+live billing or permissions. No API migrations or CLI changes are included here.

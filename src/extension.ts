@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { showBudget } from './budget-view';
 import { Auth } from './auth';
 import { OpperChatModelProvider, baseUrl, readFilter } from './provider';
 import { chooseKinds, manageCommand } from './status';
@@ -17,6 +18,7 @@ export function activate(context: vscode.ExtensionContext): void {
 		auth,
 		{ dispose: () => clearInterval(refreshTimer) },
 		vscode.commands.registerCommand('opper.refreshModels', () => { provider.refresh(); void vscode.window.showInformationMessage('Opper model refresh requested. The picker uses your current key’s allowed models.'); }),
+		vscode.commands.registerCommand('opper.budget', () => showBudget(auth, baseUrl)),
 		vscode.commands.registerCommand('opper.context', () => provider.showContext()),
 		vscode.window.onDidChangeWindowState(state => {
 			if (state.focused && Date.now() - lastFocusRefresh > 60000) { lastFocusRefresh = Date.now(); provider.refresh(); }
