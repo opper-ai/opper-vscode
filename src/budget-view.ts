@@ -21,10 +21,10 @@ export async function showBudget(auth: Auth, getBaseUrl: () => string): Promise<
 			if (cancellation.token.isCancellationRequested || getBaseUrl() !== baseUrl || (await auth.resolve())?.key !== resolved.key) return;
 			const picked = await vscode.window.showQuickPick([
 				...budgetRows(me).map(row => ({ ...row, action: 'detail' })),
-				{ label: '$(refresh) Refresh budget', action: 'refresh' },
+				{ label: '$(refresh) Check latest usage', action: 'refresh' },
 			], {
 				title: `Opper budget · ${me.project?.name ?? 'Current project'} · ${me.organization?.name ?? 'Current organization'}`,
-				placeHolder: `Updated ${new Date().toLocaleTimeString()} · Select Refresh budget to update`,
+				placeHolder: `Updated ${new Date().toLocaleTimeString()} · Latest reported figures`,
 			}, cancellation.token);
 			if (!picked) return;
 			// Details can be read as a notification; refresh is explicit.

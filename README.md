@@ -85,7 +85,7 @@ still needs the backend rollout; the local simulator can exercise rotation now.
 
 Run **Opper: Show Budget**, or choose **Show budget** in Account and Models.
 It fetches a fresh `/v3/me` snapshot and shows project spend, remaining allowance
-when a direct project limit exists, and the reporting period. **Refresh budget**
+when a direct project limit exists, and the reporting period. **Check latest usage**
 fetches again. This is a snapshot, not a live spending counter.
 
 Organization credits/spend appear only with an explicit
