@@ -1,3 +1,4 @@
+import { contextLimits } from './context';
 /**
  * Turns `/v3/compat/models` entries into the model metadata VS Code needs
  * before a model is selectable.
@@ -14,8 +15,6 @@ export interface CatalogFilter {
 	showPools: boolean;
 	showDynamicRoutes: boolean;
 	dynamicRouteToolCalling: boolean;
-	euOnly: boolean;
-	zdrOnly: boolean;
 	modelFilter: string[];
 }
 
@@ -24,25 +23,8 @@ export const DEFAULT_FILTER: CatalogFilter = {
 	showPools: true,
 	showDynamicRoutes: true,
 	dynamicRouteToolCalling: true,
-	euOnly: false,
-	zdrOnly: false,
 	modelFilter: [],
 };
-
-/**
- * Last resort for a dynamic route.
- *
- * The gateway reports `context_length` / `opper.max_output_tokens` for a route
- * as the smallest any of its candidates offers — a floor it can actually keep.
- * These constants apply only when it omits them, which it does when a candidate
- * cannot be resolved server-side (an org-scoped BYOK model, say). Deliberately
- * modest: too high and VS Code packs a context the served model rejects.
- */
-const ROUTE_CONTEXT = 128_000;
-const ROUTE_MAX_OUTPUT = 8_192;
-
-/** Reserved for the reply when a model does not report its own output cap. */
-const FALLBACK_OUTPUT_RESERVE = 4_096;
 
 /**
  * The `?type=` value for a filter, or undefined when every kind is wanted.
@@ -120,13 +102,6 @@ function mapEntry(
 	if (meta?.type && meta.type !== 'llm') {
 		return undefined;
 	}
-	if (filter.euOnly && kind !== 'dynamic_route' && meta?.region !== 'EU') {
-		return undefined;
-	}
-	// `enterprise` means ZDR is *available* under terms, not that it is on.
-	if (filter.zdrOnly && kind !== 'dynamic_route' && meta?.zdr !== 'always') {
-		return undefined;
-	}
 	if (filter.modelFilter.length > 0) {
 		const id = entry.id.toLowerCase();
 		if (!filter.modelFilter.some((needle) => id.includes(needle.toLowerCase()))) {
@@ -137,16 +112,9 @@ function mapEntry(
 	const capabilities = meta?.capabilities ?? [];
 	const isRoute = kind === 'dynamic_route';
 
-	const contextLength = entry.context_length || (isRoute ? ROUTE_CONTEXT : 0);
-	const maxOutputTokens =
-		meta?.max_output_tokens || (isRoute ? ROUTE_MAX_OUTPUT : FALLBACK_OUTPUT_RESERVE);
-
-	// A model with no context figure at all cannot be budgeted, and VS Code
-	// will trim history against whatever number we give it. Skipping is safer
-	// than inventing one.
-	if (contextLength <= 0) {
-		return undefined;
-	}
+	const limits = contextLimits(entry.context_length, meta?.max_output_tokens);
+	// Without trustworthy limits, including routes, do not advertise invented capacity.
+	if (!limits) return undefined;
 
 	return {
 		id: entry.id,
@@ -159,8 +127,8 @@ function mapEntry(
 		// context_length bounds the whole exchange, so the reply has to come
 		// out of it. Handing VS Code the full window as input budget lets it
 		// fill the context and leave the completion no room.
-		maxInputTokens: Math.max(1024, contextLength - maxOutputTokens),
-		maxOutputTokens,
+		maxInputTokens: limits.input,
+		maxOutputTokens: limits.output,
 		capabilities: {
 			toolCalling: isRoute ? filter.dynamicRouteToolCalling : capabilities.includes('tools'),
 			imageInput: isRoute ? false : capabilities.includes('vision'),
@@ -240,6 +208,7 @@ function tooltipOf(entry: OpperCompatModel, kind: string): string {
 	if (price) {
 		lines.push(price);
 	}
+	if (entry.context_length) lines.push(`Context window: ${entry.context_length.toLocaleString()} tokens. Input estimates vary by model.`);
 	return lines.join('\n');
 }
 

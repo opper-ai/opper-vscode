@@ -56,8 +56,8 @@ not prove enforcement of the selected organization's required SSO connection.
 
 The live adapter uses today's `/oauth/device` and `/oauth/device/token` forms.
 The current response supplies `api_key` and user display information, without
-expiry or stable credential identity. Live mode currently does not consume optional expiry metadata; the UI says
-expiry is unavailable. This is not evidence about the deployed response. **Renewal is disabled in live mode.** Legacy API errors may be generic.
+expiry or stable credential identity. Live mode preserves optional credential_id, numeric org_id/project_id and
+expires_at. Null expiry means no expiry set; an absent field means unavailable. **Renewal is disabled in live mode.** Legacy API errors may be generic.
 No live SSO or inference acceptance test has been performed for this prototype.
 
 ## Boundary with Johnny's work
@@ -106,3 +106,5 @@ Still required: extension-host UI walkthrough, registered live client, live SSO
 and tool-using inference, production expiry/revocation, membership/SSO policy,
 multi-window races, host storage failure, and remote SSH/devcontainer behavior.
 The fixture tests do not verify Go or Python runtime authentication.
+
+For the final interactive checklist and model/context behavior, see the root README.

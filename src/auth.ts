@@ -1,3 +1,5 @@
+import { OpperApiError } from './api';
+import { credentialError } from './login-errors';
 import * as vscode from 'vscode';
 import { resolveKey, type ResolvedKey } from './identity';
 import { DeviceLogin, endpoint, loginUrl } from './device-login';
@@ -9,6 +11,8 @@ export class Auth {
 	readonly onDidChange = this.changed.event;
 	private readonly sessions: Sessions;
 	private busy = false;
+	private prompting = false;
+	private lastPrompt = 0;
 	constructor(private readonly secrets: vscode.SecretStorage) {
 		this.sessions = new Sessions(secrets);
 		this.listener = secrets.onDidChange(() => this.changed.fire());
@@ -37,8 +41,28 @@ export class Auth {
 		if (!s || !('credential' in s)) return undefined;
 		const c = s.credential;
 		if (c.clientId === 'manual') return 'Manually supplied API key';
-		return c.expiresAt ? `Credential ${c.credentialId} · expires ${c.expiresAt}` : 'Browser sign-in · expiry unavailable';
+		return c.expiresAt ? `Browser sign-in · expires ${new Date(c.expiresAt).toLocaleString()}` : c.expiresAt === null ? 'Browser sign-in · no expiry set' : 'Browser sign-in · expiry unavailable';
 	}
+	async handleFailure(error: unknown): Promise<void> {
+		if (this.prompting || Date.now() - this.lastPrompt < 10000) return;
+		this.prompting = true;
+		this.lastPrompt = Date.now();
+		try {
+			const message = error instanceof OpperApiError ? credentialError(error.status, error.body, error.code) ?? error.message : error instanceof Error ? error.message : 'Opper request failed.';
+			const expired = /credential expired/i.test(message);
+			const entitlement = /organization access is unavailable|required SSO/i.test(message);
+			const authentication = expired || (error instanceof OpperApiError && error.status === 401) || /No Opper credential|endpoint changed/.test(message);
+			const simulator = vscode.workspace.getConfiguration('opper').get<boolean>('login.simulator') ?? false;
+			const action = expired && simulator ? 'Renew sign-in' : 'Sign in';
+			const chosen = authentication && !entitlement ? await vscode.window.showWarningMessage(message, action) : await vscode.window.showWarningMessage(message);
+			if (chosen === action) {
+				await this.login(expired && simulator);
+				void vscode.window.showInformationMessage('Sign-in updated. Retry your message when ready; it was not replayed automatically.');
+			}
+		} catch (err) { void vscode.window.showErrorMessage(err instanceof Error ? err.message : 'Opper sign-in failed.'); }
+		finally { this.prompting = false; }
+	}
+
 	async login(renew = false): Promise<void> {
 		if (this.busy) throw new Error('An Opper sign-in is already in progress in this window.');
 		this.busy = true;

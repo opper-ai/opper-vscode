@@ -123,9 +123,11 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 	const picked = await vscode.window.showQuickPick(
 		[
 			{ label: choose, description: kindSummary(filter) },
-			{ label: settings, description: 'EU-only, ZDR-only, base URL, model filter' },
+			{ label: settings, description: 'Display preferences and connection settings' },
+			{ label: 'Refresh allowed models' },
+			{ label: 'Show last request context' },
 			{ label: 'Sign in with Opper' },
-			{ label: 'Renew sign-in' },
+			...(vscode.workspace.getConfiguration('opper').get<boolean>('login.simulator') ? [{ label: 'Renew sign-in' }] : []),
 			{ label: 'Retry saving sign-in' },
 			{ label: replace },
 			{ label: signOut },
@@ -133,6 +135,8 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 		{ title: current.summary, placeHolder: current.warning ?? 'Opper' },
 	);
 	switch (picked?.label) {
+		case 'Refresh allowed models': await vscode.commands.executeCommand('opper.refreshModels'); break;
+		case 'Show last request context': await vscode.commands.executeCommand('opper.context'); break;
 		case 'Sign in with Opper': await auth.login(); break;
 		case 'Renew sign-in': await auth.login(true); break;
 		case 'Retry saving sign-in': await auth.retrySave(); break;

@@ -9,13 +9,13 @@ Built on the [Language Model Chat Provider API](https://code.visualstudio.com/ap
 - **700+ models, discovered at runtime.** No hardcoded model ids.
 - **Pools** — a bare name like `claude-sonnet-4.5` that load-balances across every provider serving it.
 - **Your dynamic routes** — deployed routing graphs, as `dynamic/<name>`. The graph picks the model per request.
-- **Residency and ZDR in the picker**, with `opper.euOnly` / `opper.zdrOnly` to narrow the list.
+- **Key-authorized models.** Opper enforces access and compliance rules. Residency and ZDR labels are informational.
 - **Scoped to your policy.** Discovery is filtered server-side by your comply allowlist, so a model your policy denies is never offered.
 
 ## Setup
 
 1. Install the extension.
-2. Run **Opper: Manage API Key** and paste a key from [platform.opper.ai](https://platform.opper.ai). It goes into VS Code's `SecretStorage`, never `settings.json`.
+2. Run **Opper: Sign In** and approve in your browser. No CLI or client configuration is needed. **Opper: Account and Models** also supports manually supplied keys. Credentials go into VS Code SecretStorage.
 3. Open Chat and pick an Opper model.
 
 Nothing is listed without a key — the model list is scoped to it.
@@ -29,8 +29,6 @@ Nothing is listed without a key — the model list is scoped to it.
 | `opper.showPools` | `true` | List load-balancing names. |
 | `opper.showDynamicRoutes` | `true` | List your deployed routes. |
 | `opper.dynamicRouteToolCalling` | `true` | Offer routes in agent mode. |
-| `opper.euOnly` | `false` | EU-hosted models only. |
-| `opper.zdrOnly` | `false` | Zero-data-retention models only. |
 | `opper.modelFilter` | `[]` | Substrings to narrow a long list. |
 
 **Only pools and routes:** gear next to "Opper" in the model picker → *Choose what to list…* → untick **Models**.
@@ -51,3 +49,38 @@ npm test                         # typecheck + node --test
 ## License
 
 MIT © Opper Technology AB
+
+## Final prototype test
+
+Run `npm run compile`, open this folder in VS Code and press F5. In the new
+Extension Development Host:
+
+1. Run **Opper: Sign In**, approve through normal Opper SSO, and select your org.
+2. Run **Opper: Account and Models** to check the org/project returned for the key.
+3. Pick an Opper model and send a short message. Try a small file-reading task
+   in Agent mode in a disposable folder to exercise tool calls.
+4. Hover the **Opper: …% input** status item after a response. It describes the
+   last Opper request, not necessarily the selected chat. Server prompt usage is
+   preferred; otherwise an estimate is labelled `~`. Media costs are unknown
+   until server usage arrives. Output capacity is reserved separately.
+5. Run **Opper: Refresh Models** after a policy change. Discovery also refreshes
+   while focused every minute and on returning to the window. The server remains
+   authoritative on each inference request; a briefly stale picker grants no access.
+6. Run **Opper: Sign Out**, then sign in again. Sign-out is local; no environment
+   key is silently selected afterward.
+
+No custom EU/ZDR enforcement switches are needed. Optional model-kind/name
+preferences only narrow the server-authorized set. Non-chat entries and entries
+without valid context limits are omitted; routes no longer get an invented 128k
+window. Model limits and tool/vision metadata still need to be correct server-side.
+
+Live login retains optional `credential_id`, numeric `org_id`/`project_id`, and
+`expires_at`; null means no expiry set, absent means unavailable. Locally known
+expiry or runtime authentication rejection can show a sign-in action; the failed
+turn is never replayed automatically. **Live rotation remains disabled until the
+backend is deployed and verified.** A failed live sign-in for an expired grant
+still needs the backend rollout; the local simulator can exercise rotation now.
+
+Scoped budget display awaits the backend `/me` contract. Org credits are not
+presented as a personal/project remaining allowance. No API migrations or CLI
+changes are included in this extension branch.

@@ -7,7 +7,7 @@ export interface Credential {
 	organizationId?: string;
 	projectId?: string;
 	credentialId?: string;
-	expiresAt?: string;
+	expiresAt?: string | null;
 }
 export interface SecretStore {
 	get(key: string): PromiseLike<string | undefined>;
@@ -18,7 +18,7 @@ type Session = { credential: Credential } | { signedOut: true };
 
 export function usable(c: Credential, origin: string, now = Date.now()): void {
 	if (c.origin !== origin) throw new Error('Opper endpoint changed. Sign in again for this endpoint.');
-	if (c.expiresAt !== undefined && (!Number.isFinite(Date.parse(c.expiresAt)) || Date.parse(c.expiresAt) <= now)) {
+	if (c.expiresAt != null && (!Number.isFinite(Date.parse(c.expiresAt)) || Date.parse(c.expiresAt) <= now)) {
 		throw new Error('Opper credential expired. Run "Opper: Renew Sign-in".');
 	}
 }

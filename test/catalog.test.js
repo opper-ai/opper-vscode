@@ -51,6 +51,7 @@ const POOL = {
 
 const ROUTE = {
 	id: 'dynamic/support',
+	context_length: 128000,
 	object: 'model',
 	created: 1704067200,
 	owned_by: 'opper',
@@ -114,16 +115,9 @@ test('residency and ZDR surface in the picker detail line', () => {
 	assert.match(m.tooltip, /\$3\.00 in \/ \$15\.00 out per 1M tokens/);
 });
 
-test('euOnly drops a non-EU model', () => {
-	const us = { ...CHAT, id: 'openai/gpt-5', opper: { ...CHAT.opper, region: 'US' } };
-	const ids = map([CHAT, us], { euOnly: true }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5']);
-});
-
-test('zdrOnly treats enterprise-available as not enabled', () => {
-	const ent = { ...CHAT, id: 'x/ent', opper: { ...CHAT.opper, zdr: 'enterprise' } };
-	const ids = map([CHAT, ent], { zdrOnly: true }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5']);
+test('legacy local compliance switches do not hide server-authorized models', () => {
+ const us = { ...CHAT, id: 'other/model', opper: { ...CHAT.opper, region: 'US', zdr: 'enterprise' } };
+ assert.equal(map([CHAT, us], { euOnly: true, zdrOnly: true }).length, 2);
 });
 
 test('modelFilter matches on substring, case-insensitively', () => {
@@ -162,13 +156,8 @@ test('a route never claims image input, and its tool calling is opt-out', () => 
 	);
 });
 
-test('residency filters do not silently hide the org\'s own routes', () => {
-	// A route has no region to report; filtering it out on euOnly would delete
-	// the user's own deployed routing from the picker with no way to see why.
-	assert.deepStrictEqual(
-		map([ROUTE], { euOnly: true, zdrOnly: true }).map((m) => m.id),
-		['dynamic/support'],
-	);
+test('a route without server context metadata is omitted instead of inventing 128k', () => {
+ assert.deepStrictEqual(map([{ ...ROUTE, context_length: undefined }]), []);
 });
 
 test('all kinds selected sends no ?type= at all', () => {

@@ -31,6 +31,17 @@ function text(value: unknown): value is string { return typeof value === 'string
 export function credentialFromResponse(data: Record<string, unknown>, options: LoginOptions, previous?: Credential): Credential {
 	if (!text(data.api_key)) throw new Error('Opper returned no credential.');
 	const c: Credential = { key: data.api_key, origin: endpoint(options.baseUrl), clientId: options.clientId };
+	// Retain additive backend metadata in live mode without requiring new fields on legacy servers.
+	if (!options.pilot) {
+		if (text(data.credential_id)) c.credentialId = data.credential_id;
+		if (typeof data.org_id === 'number' && Number.isSafeInteger(data.org_id) && data.org_id > 0) c.organizationId = String(data.org_id);
+		if (typeof data.project_id === 'number' && Number.isSafeInteger(data.project_id) && data.project_id > 0) c.projectId = String(data.project_id);
+		if (data.expires_at === null) c.expiresAt = null;
+		else if (data.expires_at !== undefined) {
+			if (!text(data.expires_at) || !Number.isFinite(Date.parse(data.expires_at))) throw new Error('Invalid credential expiry returned by Opper.');
+			c.expiresAt = data.expires_at;
+		}
+	}
 	if (options.pilot) {
 		for (const field of ['credential_id', 'user_id', 'organization_id', 'project_id', 'client_id', 'expires_at']) {
 			if (!text(data[field])) throw new Error(`Pilot response missing ${field}.`);

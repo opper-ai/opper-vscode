@@ -38,7 +38,7 @@
     "commands": [
       {
         "command": "opper.manage",
-        "title": "Opper: Manage API Key",
+        "title": "Account and Models",
         "category": "Opper"
       },
       {
@@ -48,7 +48,7 @@
       },
       {
         "command": "opper.signOut",
-        "title": "Opper: Sign Out",
+        "title": "Sign Out",
         "category": "Opper"
       },
       {
@@ -64,6 +64,16 @@
       {
         "command": "opper.retrySave",
         "title": "Retry Saving Sign-in",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.refreshModels",
+        "title": "Refresh Models",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.context",
+        "title": "Show Last Request Context",
         "category": "Opper"
       }
     ],
@@ -95,16 +105,6 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Advertise dynamic routes as tool-calling capable. Opper cannot know this ahead of time \u2014 the graph picks the model per request \u2014 so this is a promise you make on your route's behalf. Turn it off if a route can land on a model without tool support; the route then stays out of agent mode instead of failing mid-turn."
-        },
-        "opper.euOnly": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Only list models Opper reports as hosted in the EU (`opper.region == \"EU\"`). Pools are included only when *every* member is EU-hosted."
-        },
-        "opper.zdrOnly": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Only list models with zero data retention by default (`opper.zdr == \"always\"`). Models where ZDR is merely available under enterprise terms are excluded."
         },
         "opper.modelFilter": {
           "type": "array",
