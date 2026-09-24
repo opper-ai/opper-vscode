@@ -25,7 +25,7 @@ test('provider sends selected allowed model, bounds output and reads final strea
  try{
  await p.provideLanguageModelChatResponse(model,[{role:1,content:[new Text('Hi')]}],{modelOptions:{model:'wrong',max_tokens:999999,max_completion_tokens:999999},tools:[]},{report:part=>parts.push(part)},token);
  assert.equal(request.model,model.id);assert.equal(request.max_tokens,2000);assert.equal(request.max_completion_tokens,undefined);assert.equal(request.stream_options.include_usage,true);
- assert.match(status.tooltip,/Server-reported input: 1,500/);assert.match(status.text,/25%/);assert.equal(parts[0].value,'hello');
+ assert.match(status.tooltip,/Last request: 1,500/);assert.match(status.text,/25%/);assert.equal(parts[0].value,'hello');
  }finally{global.fetch=old;p.dispose();}
 });
 test('removed model never makes an inference request and credential errors offer recovery',async()=>{

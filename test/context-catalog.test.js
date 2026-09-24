@@ -16,8 +16,8 @@ test('context estimates include tools and Unicode, and mark media as unknown', (
  assert.ok(estimateTokens('你好') > estimateTokens('hi'));
  const image = promptEstimate({messages:[{content:[{type:'image_url', image_url:{url:'data:'.repeat(10000)}}]}]});
  assert.equal(image.hasMedia,true); assert.ok(image.tokens < 1000);
- assert.match(contextSummary('m', 500, 1000, false,true), /Remaining space is unknown/);
- assert.match(contextSummary('m', 500, 1000, true,false), /Server-reported/);
+ assert.match(contextSummary('m', 500, 1000, false,true), /text tokens \(media excluded\)/);
+ assert.match(contextSummary('m', 500, 1000, true,false), /Last request: 500 \/ 1,000 input tokens \(50%\)/);
 });
 test('catalog switches keys, expires, and cannot resurrect an invalidated fetch', async () => {
  const c = new ModelCatalog(); let calls = 0; const fetcher = async () => [{id:String(++calls)}];

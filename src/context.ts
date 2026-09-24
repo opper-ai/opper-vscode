@@ -17,6 +17,6 @@ export function promptEstimate(body: Record<string, unknown>): { tokens: number;
 	return { tokens: estimateTokens(json), hasMedia };
 }
 export function contextSummary(model: string, used: number, budget: number, actual: boolean, hasMedia: boolean): string {
-	const kind = actual ? 'Server-reported input' : hasMedia ? 'Estimated text input (media excluded)' : 'Estimated input';
-	return `${model}\n${kind}: ${used.toLocaleString()} / ${budget.toLocaleString()} input tokens.\n${hasMedia && !actual ? 'Remaining space is unknown until the server reports usage.' : `${actual ? '' : 'Approximately '}${Math.max(0, budget - used).toLocaleString()} input tokens remaining at the start of this request.`}\nThis is the last Opper request, not the currently selected chat. Output space is reserved separately; VS Code manages conversation compaction.`;
+	if (hasMedia && !actual) return `${model}\nLast request: ~${used.toLocaleString()} text tokens (media excluded)`;
+	return `${model}\nLast request: ${actual ? '' : '~'}${used.toLocaleString()} / ${budget.toLocaleString()} input tokens (${Math.round(100 * used / budget)}%)`;
 }
