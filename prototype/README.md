@@ -56,8 +56,8 @@ not prove enforcement of the selected organization's required SSO connection.
 
 The live adapter uses today's `/oauth/device` and `/oauth/device/token` forms.
 The current response supplies `api_key` and user display information, without
-expiry or stable credential identity. The UI explicitly says expiry is not
-supplied. **Renewal is disabled in live mode.** Legacy API errors may be generic.
+expiry or stable credential identity. Live mode currently does not consume optional expiry metadata; the UI says
+expiry is unavailable. This is not evidence about the deployed response. **Renewal is disabled in live mode.** Legacy API errors may be generic.
 No live SSO or inference acceptance test has been performed for this prototype.
 
 ## Boundary with Johnny's work

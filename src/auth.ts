@@ -37,7 +37,7 @@ export class Auth {
 		if (!s || !('credential' in s)) return undefined;
 		const c = s.credential;
 		if (c.clientId === 'manual') return 'Manually supplied API key';
-		return c.expiresAt ? `Credential ${c.credentialId} · expires ${c.expiresAt}` : 'Browser sign-in · expiry not supplied by the current server';
+		return c.expiresAt ? `Credential ${c.credentialId} · expires ${c.expiresAt}` : 'Browser sign-in · expiry unavailable';
 	}
 	async login(renew = false): Promise<void> {
 		if (this.busy) throw new Error('An Opper sign-in is already in progress in this window.');
