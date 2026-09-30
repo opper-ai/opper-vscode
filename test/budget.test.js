@@ -32,3 +32,17 @@ test('invalid amounts/currency/period are not invented or formatted as dollars',
  const result=text({project_spend:{...scope,currency:'eur',spent_cents:NaN,period_start:'bad'}});
  assert.doesNotMatch(result,/USD|NaN|bad/);assert.match(result,/Unavailable/);
 });
+const {allowanceSummary,budgetSummary}=require('../out/budget.js');
+const {budgetHtml}=require('../out/budget-html.js');
+test('allowance bar uses the project cap, handles zero and overage, and labels reset in UTC',()=>{
+ const a=allowanceSummary({project_spend:scope});assert.equal(a.percent,24.68);assert.match(a.reset,/1 October 2026/);
+ assert.equal(allowanceSummary({project_spend:{...scope,limit_cents:0}}).percent,undefined);
+ const html=budgetHtml({project_spend:{...scope,spent_cents:6000}},'nonce');assert.match(html,/value="100"/);assert.match(html,/120% used/);
+ assert.doesNotMatch(budgetHtml({project_spend:{...scope,limit_cents:null}},'nonce'),/<progress/);
+});
+test('budget HTML escapes project data and hides organization data without permission',()=>{
+ const me={project:{name:'<script>alert(1)</script>'},project_spend:scope,balance:{currency:'usd',balance_cents:987654},spend:scope};
+ const html=budgetHtml(me,'nonce');assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/9,876|Organization billing/);
+ assert.match(budgetHtml({...me,visibility:{organization_finance:true}},'nonce'),/Organization billing/);
+ assert.match(budgetSummary(me,new Date()),/USD 12.34 used of USD 50.00/);
+});

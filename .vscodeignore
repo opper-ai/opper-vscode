@@ -9,3 +9,5 @@ esbuild.js
 **/*.map
 
 prototype/**
+
+vendor/**

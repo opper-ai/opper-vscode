@@ -1,0 +1,22 @@
+import type { OpperIdentity } from './api';
+import { allowanceSummary, budgetRows } from './budget';
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+export function budgetHtml(me: OpperIdentity | undefined, nonce: string, updated?: Date, error?: string): string {
+ const a = me ? allowanceSummary(me) : undefined;
+ const finance = me?.visibility?.organization_finance === true ? budgetRows(me).filter(r=>r.label.startsWith('Organization') || r.label.startsWith('No organization')) : [];
+ return `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';"><title>Opper budget</title>
+ <style nonce="${nonce}">
+ body{font-family:var(--vscode-font-family,system-ui);color:var(--vscode-foreground,#ddd);background:var(--vscode-editor-background,#202020);margin:0;padding:32px;line-height:1.5}main{max-width:620px;margin:auto}header{display:flex;align-items:center;justify-content:space-between;gap:20px}h1{font-size:24px;margin:0}h2{font-size:16px;margin:28px 0 12px}p{margin:8px 0}.muted{color:var(--vscode-descriptionForeground,#aaa)}.usage{font-size:28px;font-weight:600;margin-top:28px}.total{font-size:16px;font-weight:400}.bar{display:block;width:100%;height:12px;margin:16px 0;accent-color:var(--vscode-progressBar-background,#3794ff)}.numbers{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.notice{border-left:3px solid var(--vscode-editorWarning-foreground,#cca700);padding:8px 14px;margin:20px 0}.billing{border-top:1px solid var(--vscode-widget-border,#555);margin-top:32px}dl{display:grid;grid-template-columns:1fr auto;gap:12px}dt,dd{margin:0}dd{text-align:right;font-variant-numeric:tabular-nums}button{background:var(--vscode-button-background,#0e639c);color:var(--vscode-button-foreground,#fff);border:1px solid transparent;border-radius:3px;padding:8px 12px;font:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--vscode-focusBorder,#007fd4);outline-offset:3px}footer{margin-top:32px;font-size:12px}@media(max-width:420px){body{padding:20px}header{align-items:flex-start;flex-direction:column}.usage{font-size:24px}}
+ </style></head><body><main><header><h1>Opper budget</h1><button id="refresh">Check latest usage</button></header>
+ ${error ? `<p class="notice" role="status">${esc(error)}</p>` : ''}
+ ${me && a ? `<h2>Project allowance</h2><p class="muted">${esc(me.project?.name ?? 'Current project')}</p>
+ ${me.blocked ? `<p class="notice" role="status">${esc(budgetRows(me)[0].description)}. Contact your administrator.</p>` : ''}
+ <p class="usage">${esc(a.used)} <span class="total">used${a.total ? ` of ${esc(a.total)}` : ''}</span></p>
+ ${a.percent !== undefined ? `<progress class="bar" max="100" value="${Math.min(100,Math.max(0,a.percent))}" aria-label="Project allowance used" aria-valuetext="${Math.round(a.percent)} percent used"></progress>` : ''}
+ <div class="numbers"><span>${a.remaining ? `${esc(a.remaining)} remaining` : esc(a.note)}</span>${a.percent !== undefined ? `<span>${Math.round(a.percent)}% used</span>` : ''}</div>
+ ${a.total && a.note ? `<p class="muted">${esc(a.note)}</p>` : ''}
+ <p class="muted">${a.reset ? `${a.total ? 'Resets' : 'Period ends'} ${esc(a.reset)}` : 'Reset date unavailable'}</p>
+ ${finance.length ? `<section class="billing"><h2>Organization billing</h2><p class="muted">${esc(me.organization?.name)}</p><dl>${finance.map(r=>`<dt>${esc(r.label)}${r.detail ? `<br><small class="muted">${esc(r.detail)}</small>` : ''}</dt><dd>${esc(r.description)}</dd>`).join('')}</dl></section>` : ''}` : !error ? '<p role="status">Loading your allowance…</p>' : ''}
+ <footer class="muted">${updated ? `Updated ${esc(updated.toLocaleTimeString())}. Latest reported usage; recent requests may take time to appear.` : 'Usage is scoped to your current Opper credential.'}</footer>
+ </main><script nonce="${nonce}">const vscode=acquireVsCodeApi();document.getElementById('refresh').addEventListener('click',()=>vscode.postMessage({type:'refresh'}));</script></body></html>`;
+}

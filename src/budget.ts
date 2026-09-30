@@ -43,3 +43,29 @@ export function budgetRows(me: OpperIdentity): BudgetRow[] {
 	}
 	return rows;
 }
+
+export interface AllowanceSummary {
+ used: string; total?: string; remaining?: string; percent?: number;
+ reset?: string; note?: string;
+}
+/** Project scope only: organization funding is never a personal allowance. */
+export function allowanceSummary(me: OpperIdentity): AllowanceSummary {
+ const s = me.project_spend;
+ if (!s) return { used: 'Unavailable', note: 'Project budget unavailable' };
+ const used = money(s.spent_cents, s.currency) ?? 'Unavailable';
+ const end = s.period_end ? new Date(s.period_end) : undefined;
+ const reset = end && Number.isFinite(end.getTime()) ? end.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) + ' (UTC)' : undefined;
+ if (s.limit_cents === null) return { used, reset, note: 'No project allowance set. Organization funding and limits still apply.' };
+ if (s.limit_scope !== 'project' || typeof s.limit_cents !== 'number' || !Number.isFinite(s.limit_cents) || s.limit_cents < 0 || s.currency !== 'usd') return { used, reset, note: 'Project allowance unavailable' };
+ const percent = s.limit_cents > 0 && typeof s.spent_cents === 'number' && Number.isFinite(s.spent_cents) && s.spent_cents >= 0 ? 100 * s.spent_cents / s.limit_cents : undefined;
+ return { used, total: money(s.limit_cents, s.currency), remaining: money(s.remaining_cents, s.currency), percent, reset, note: s.limit_cents === 0 ? 'Project allowance is zero.' : undefined };
+}
+export function budgetSummary(me: OpperIdentity, updated: Date): string {
+ const a = allowanceSummary(me);
+ return [me.blocked ? 'Spending blocked — contact your administrator.' : '',
+ `Project: ${me.project?.name ?? 'Current project'}`,
+ a.total ? `${a.used} used of ${a.total}${a.percent !== undefined ? ` (${Math.round(a.percent)}%)` : ''}` : `${a.used} used`,
+ a.remaining ? `${a.remaining} remaining` : a.note,
+ a.reset ? `${a.total ? 'Resets' : 'Period ends'} ${a.reset}` : 'Reset date unavailable',
+ `Updated ${updated.toLocaleTimeString()} · Click to view budget`].filter(Boolean).join('\n');
+}

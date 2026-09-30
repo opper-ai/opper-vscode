@@ -52,11 +52,10 @@ export class Auth {
 			const expired = /credential expired/i.test(message);
 			const entitlement = /organization access is unavailable|required SSO/i.test(message);
 			const authentication = expired || (error instanceof OpperApiError && error.status === 401) || /No Opper credential|endpoint changed/.test(message);
-			const simulator = vscode.workspace.getConfiguration('opper').get<boolean>('login.simulator') ?? false;
-			const action = expired && simulator ? 'Renew sign-in' : 'Sign in';
+			const action = expired ? 'Renew sign-in' : 'Sign in';
 			const chosen = authentication && !entitlement ? await vscode.window.showWarningMessage(message, action) : await vscode.window.showWarningMessage(message);
 			if (chosen === action) {
-				await this.login(expired && simulator);
+				await this.login(expired);
 				void vscode.window.showInformationMessage('Sign-in updated. Retry your message when ready; it was not replayed automatically.');
 			}
 		} catch (err) { void vscode.window.showErrorMessage(err instanceof Error ? err.message : 'Opper sign-in failed.'); }
@@ -72,7 +71,7 @@ export class Auth {
 			const flow = new DeviceLogin(opts);
 			const s = await this.sessions.read();
 			const previous = renew && s && 'credential' in s ? s.credential : undefined;
-			if (renew && !previous) throw new Error('Sign in with Opper before renewing.');
+			if (renew && (!previous || previous.clientId === 'manual')) throw new Error('Sign in with Opper before renewing.');
 			await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: renew ? 'Renew Opper sign-in' : 'Sign in with Opper', cancellable: true }, async (progress, token) => {
 				const controller = new AbortController();
 				const listener = token.onCancellationRequested(() => controller.abort());
@@ -82,6 +81,8 @@ export class Auth {
 					const opened = await vscode.env.openExternal(vscode.Uri.parse(loginUrl(d, opts.platformUrl)));
 					if (!opened) throw new Error('Could not open the approval page. Check your browser and try again.');
 					const credential = await flow.poll(d, controller.signal, previous);
+					controller.signal.throwIfAborted();
+					if (this.origin() !== opts.baseUrl || vscode.workspace.getConfiguration('opper').get<string>('login.clientId', 'opper_app_p-xX3vmCeoZLEZqmycoglw') !== opts.clientId) throw new Error('Login settings changed. Start sign-in again.');
 					await this.sessions.save(credential);
 					this.changed.fire();
 					void vscode.window.showInformationMessage(await this.sessionSummary() ?? 'Signed in to Opper.');

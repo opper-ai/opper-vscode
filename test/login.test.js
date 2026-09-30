@@ -104,3 +104,36 @@ test('VS Code auth sign-out suppresses legacy and environment fallback after rel
     auth.dispose(); reopened.dispose();
   } finally { if (oldEnv === undefined) delete process.env.OPPER_API_KEY; else process.env.OPPER_API_KEY = oldEnv; }
 });
+
+ test('live error envelope keeps polling while browser approval is pending', async () => {
+  const original = global.fetch; let polls = 0;
+  global.fetch = async () => ++polls <= 2
+    ? new Response(JSON.stringify({ errors: [{ type: 'HTTPException', message: 'authorization_pending', detail: 'authorization_pending' }] }), { status: 400 })
+    : new Response(JSON.stringify({ api_key: 'synthetic-approved' }), { status: 200 });
+  try {
+    const flow = new DeviceLogin({ ...options, pilot: false });
+    const result = await flow.poll({ device_code: 'synthetic', expires_in: 10, interval: 1 }, AbortSignal.timeout(8000));
+    assert.equal(result.key, 'synthetic-approved'); assert.equal(polls, 3);
+  } finally { global.fetch = original; }
+ });
+ test('live error envelope reports denial instead of a generic HTTP error', async () => {
+  const original = global.fetch;
+  global.fetch = async () => new Response(JSON.stringify({ errors: [{ detail: 'access_denied' }] }), { status: 400 });
+  try {
+    await assert.rejects(new DeviceLogin({ ...options, pilot: false }).poll({ device_code: 'synthetic', expires_in: 10, interval: 1 }, AbortSignal.timeout(5000)), /denied/);
+  } finally { global.fetch = original; }
+ });
+test('shared live flow sends renewal fields and preserves metadata',async()=>{
+ const original=global.fetch;let fields;
+ const live={...options,pilot:false};
+ const previous={key:'old',origin:options.baseUrl,clientId:options.clientId,credentialId:'10',organizationId:'1',userEmail:'dev@example.invalid'};
+ global.fetch=async(url,init)=>{
+  if(url.endsWith('/device')){fields=Object.fromEntries(init.body);return Response.json({device_code:'device',user_code:'CODE',verification_uri:options.platformUrl+'/activate',expires_in:10,interval:1});}
+  return Response.json({api_key:'new',credential_id:'11',org_id:1,project_id:2,project_uuid:'project-uuid',project_name:'Developer project',user:{email:'dev@example.invalid'},expires_at:new Date(Date.now()+60000).toISOString()});
+ };
+ try{const flow=new DeviceLogin(live);const d=await flow.start(AbortSignal.timeout(5000),previous);const c=await flow.poll(d,AbortSignal.timeout(5000),previous);assert.equal(fields.renew,'true');assert.equal(fields.current_credential_id,'10');assert.equal(c.credentialId,'11');assert.equal(c.projectName,'Developer project');assert.equal(c.userEmail,previous.userEmail);}finally{global.fetch=original;}
+});
+test('cancelled shared polling makes no token request',async()=>{
+ const original=global.fetch;let requests=0;global.fetch=async()=>{requests++;throw Error('should not request');};
+ try{await assert.rejects(new DeviceLogin({...options,pilot:false}).poll({device_code:'test',expires_in:600,interval:5},AbortSignal.abort()),/abort/i);assert.equal(requests,0);}finally{global.fetch=original;}
+});

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { showBudget } from './budget-view';
+import { BudgetView } from './budget-view';
 import { Auth } from './auth';
 import { OpperChatModelProvider, baseUrl, readFilter } from './provider';
 import { chooseKinds, manageCommand } from './status';
@@ -11,17 +11,21 @@ const VENDOR = 'opper';
 export function activate(context: vscode.ExtensionContext): void {
 	const auth = new Auth(context.secrets);
 	const provider = new OpperChatModelProvider(auth);
+	const budget = new BudgetView(auth, baseUrl, summary => provider.setBudget(summary));
+	provider.onUsage=()=>{void budget.refresh();};
+	void budget.refresh();
 	let lastFocusRefresh = 0;
-	const refreshTimer = setInterval(() => { if (vscode.window.state.focused) provider.refresh(); }, 60000);
+	const refreshTimer = setInterval(() => { if (vscode.window.state.focused) { provider.refresh(); void budget.refresh(); } }, 60000);
 
 	context.subscriptions.push(
 		auth,
+		budget,
 		{ dispose: () => clearInterval(refreshTimer) },
 		vscode.commands.registerCommand('opper.refreshModels', () => { provider.refresh(); void vscode.window.showInformationMessage('Opper model refresh requested. The picker uses your current key’s allowed models.'); }),
-		vscode.commands.registerCommand('opper.budget', () => showBudget(auth, baseUrl)),
+		vscode.commands.registerCommand('opper.budget', () => budget.show()),
 		vscode.commands.registerCommand('opper.context', () => provider.showContext()),
 		vscode.window.onDidChangeWindowState(state => {
-			if (state.focused && Date.now() - lastFocusRefresh > 60000) { lastFocusRefresh = Date.now(); provider.refresh(); }
+			if (state.focused && Date.now() - lastFocusRefresh > 60000) { lastFocusRefresh = Date.now(); provider.refresh(); void budget.refresh(); }
 		}),
 		vscode.commands.registerCommand('opper.signIn', () => run(() => auth.login())),
 		vscode.commands.registerCommand('opper.renew', () => run(() => auth.login(true))),
@@ -31,7 +35,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 		// Storing a key changes which models exist, so the picker has to be
 		// told rather than waiting for its next refresh.
-		auth.onDidChange(() => { provider.resetContext(); provider.refresh(); }),
+		auth.onDidChange(() => { provider.resetContext(); provider.refresh(); void budget.refresh(true); }),
 
 		// The gear icon next to "Opper" in the model picker — declared as
 		// contributes.languageModelChatProviders[].managementCommand.

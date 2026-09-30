@@ -21,18 +21,25 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 
 	private readonly catalog = new ModelCatalog();
 	private readonly contextItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
+	private budgetDetail?: string;
+	onUsage?: () => void;
 	private contextDetail = 'Send a message using an Opper model to see the last request’s context estimate.';
 	constructor(private readonly auth: Auth) {
-		this.contextItem.command = 'opper.context';
-		this.contextItem.name = 'Opper request context';
+		this.contextItem.command = 'opper.budget';
+		this.contextItem.name = 'Opper usage and budget';
+		this.contextItem.text = '$(info) Opper';
+		this.contextItem.show();
 	}
-	resetContext(): void { this.contextItem.hide(); this.contextDetail = 'Send a message using an Opper model to see the last request’s context estimate.'; }
+	resetContext(): void { this.contextItem.text = '$(info) Opper'; this.contextDetail = 'Send a message using an Opper model to see the last request’s context estimate.'; this.updateTooltip(); }
+	setBudget(summary?: string): void { this.budgetDetail=summary; this.updateTooltip(); }
+	private updateTooltip(): void { this.contextItem.tooltip=[this.budgetDetail ?? 'Click to view your project allowance.',this.contextDetail].join('\n\n'); }
 	showContext(): void { void vscode.window.showInformationMessage(this.contextDetail); }
 	private reportContext(model: vscode.LanguageModelChatInformation, used: number, actual: boolean, hasMedia: boolean): void {
 		this.contextDetail = contextSummary(model.id, used, model.maxInputTokens, actual, hasMedia);
 		const pct = Math.round(100 * used / model.maxInputTokens);
 		this.contextItem.text = hasMedia && !actual ? '$(info) Opper: context estimate' : `$(info) Opper: ${actual ? '' : '~'}${pct}% input`;
-		this.contextItem.tooltip = this.contextDetail;
+		this.updateTooltip();
+		this.onUsage?.();
 		this.contextItem.show();
 	}
 	private models(client: OpperClient, key: string, signal: AbortSignal): Promise<import('./api').OpperCompatModel[]> {

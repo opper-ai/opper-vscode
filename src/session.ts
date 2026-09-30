@@ -4,6 +4,9 @@ export interface Credential {
 	origin: string;
 	clientId: string;
 	userId?: string;
+	userEmail?: string;
+	projectName?: string;
+	projectUuid?: string;
 	organizationId?: string;
 	projectId?: string;
 	credentialId?: string;

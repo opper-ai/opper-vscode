@@ -77,15 +77,20 @@ window. Model limits and tool/vision metadata still need to be correct server-si
 Live login retains optional `credential_id`, numeric `org_id`/`project_id`, and
 `expires_at`; null means no expiry set, absent means unavailable. Locally known
 expiry or runtime authentication rejection can show a sign-in action; the failed
-turn is never replayed automatically. **Live rotation remains disabled until the
-backend is deployed and verified.** A failed live sign-in for an expired grant
-still needs the backend rollout; the local simulator can exercise rotation now.
+turn is never replayed automatically. **The live renewal wire contract is now implemented through the shared login SDK.**
+Production acceptance still requires client activation. On 30 September, the VS Code
+client returned `Agent login client activation pending`. Existing stored keys can
+be used for local UI/inference review; avoid signing out just to test the panel.
 
 ## Project budget
 
 Run **Opper: Show Budget**, or choose **Show budget** in Account and Models.
-It fetches a fresh `/v3/me` snapshot and shows project spend, remaining allowance
-when a direct project limit exists, and the reporting period. **Check latest usage**
+It opens a themed panel with project allowance, consumption, an accessible usage
+bar, remaining amount and reset date. Projects without a direct cap show spend
+and an explicit no-allowance message instead of a percentage. The Opper footer
+now opens this panel on click; its hover combines a compact budget summary and
+last-request context. Background snapshots refresh while focused at most once
+a minute; opening the panel or using Check latest usage requests fresh data. **Check latest usage**
 fetches again. This is a snapshot, not a live spending counter.
 
 Organization credits/spend appear only with an explicit
@@ -97,3 +102,20 @@ Switching credentials or API origin closes the budget view.
 
 The scoped fields require the backend `/me` rollout; fixture checks do not prove
 live billing or permissions. No API migrations or CLI changes are included here.
+
+## 30 September local review build
+
+The shared `@opperai/login` dependency is a local, unpublished snapshot of PR #4
+plus cancellation/timeouts. `vendor/README.md` records the source and patch.
+It must be replaced with an approved published SDK before customer release.
+
+- Reopen this folder and press F5, or reload the existing Extension Development Host.
+- Keep your existing sign-in while the VS Code OAuth client awaits activation.
+- Click the Opper footer, or run **Opper: Show Budget**.
+- A numeric allowance/bar appears only when the project actually has a direct cap.
+- **Opper: Renew Sign-in** now sends `renew` and `currentCredentialId` through the
+  shared SDK. Production renewal is not yet verified; no failed model turn is replayed.
+
+Local review checks: budget scope/permissions, zero/no-cap states, stale result
+rejection, safe rendering, shared renewal metadata and cancellation. Visual
+inspection in the extension host remains part of the local review.
