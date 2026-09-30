@@ -1,4 +1,4 @@
-/** Prototype's internal schema; pilot wire fields still require agreement with the API team. */
+/** Locally stored Opper credential metadata. Secrets stay in VS Code SecretStorage. */
 export interface Credential {
 	key: string;
 	origin: string;
@@ -28,6 +28,7 @@ export function usable(c: Credential, origin: string, now = Date.now()): void {
 
 export class Sessions {
 	private pending?: Credential;
+	get hasPendingSave(): boolean { return this.pending !== undefined; }
 	constructor(private readonly secrets: SecretStore) {}
 	async read(): Promise<Session | undefined> {
 		const raw = await this.secrets.get(SESSION_SLOT);

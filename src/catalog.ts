@@ -14,16 +14,12 @@ export interface CatalogFilter {
 	showModels: boolean;
 	showPools: boolean;
 	showDynamicRoutes: boolean;
-	dynamicRouteToolCalling: boolean;
-	modelFilter: string[];
 }
 
 export const DEFAULT_FILTER: CatalogFilter = {
 	showModels: true,
 	showPools: true,
 	showDynamicRoutes: true,
-	dynamicRouteToolCalling: true,
-	modelFilter: [],
 };
 
 /**
@@ -102,12 +98,6 @@ function mapEntry(
 	if (meta?.type && meta.type !== 'llm') {
 		return undefined;
 	}
-	if (filter.modelFilter.length > 0) {
-		const id = entry.id.toLowerCase();
-		if (!filter.modelFilter.some((needle) => id.includes(needle.toLowerCase()))) {
-			return undefined;
-		}
-	}
 
 	const capabilities = meta?.capabilities ?? [];
 	const isRoute = kind === 'dynamic_route';
@@ -130,7 +120,7 @@ function mapEntry(
 		maxInputTokens: limits.input,
 		maxOutputTokens: limits.output,
 		capabilities: {
-			toolCalling: isRoute ? filter.dynamicRouteToolCalling : capabilities.includes('tools'),
+			toolCalling: capabilities.includes('tools'),
 			imageInput: isRoute ? false : capabilities.includes('vision'),
 		},
 		detail: detailOf(entry, kind),

@@ -11,3 +11,6 @@ esbuild.js
 prototype/**
 
 vendor/**
+
+patches/**
+.github/**

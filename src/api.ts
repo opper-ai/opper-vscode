@@ -132,6 +132,7 @@ export class OpperClient {
 		const res = await fetch(this.url(path), {
 			method: 'GET',
 			headers: this.headers(),
+			redirect: 'error',
 			signal,
 		});
 		if (!res.ok) {
@@ -150,6 +151,7 @@ export class OpperClient {
 		const res = await fetch(this.url('/v3/me'), {
 			method: 'GET',
 			headers: this.headers(),
+			redirect: 'error',
 			signal,
 		});
 		if (!res.ok) {
@@ -169,6 +171,7 @@ export class OpperClient {
 		const res = await fetch(this.url('/v3/compat/chat/completions'), {
 			method: 'POST',
 			headers: this.headers(),
+			redirect: 'error',
 			body: JSON.stringify({ ...body, stream: true, stream_options: { include_usage: true } }),
 			signal,
 		});
@@ -240,7 +243,7 @@ async function toApiError(res: Response, doing: string): Promise<OpperApiError> 
 	}
 	const hint =
 		res.status === 401
-			? ' — check your Opper API key (run "Opper: Manage API Key")'
+			? ' — check your Opper API key (run "Opper: Sign In")'
 			: res.status === 403
 				? ' — this key may not be entitled to that model, or your comply policy denies it'
 				: '';

@@ -1,7 +1,7 @@
 {
   "name": "opper-vscode",
   "displayName": "Opper",
-  "description": "Use any of Opper's 700+ models \u2014 plus your pools and dynamic routes \u2014 in VS Code chat, routed through the EU-hosted Opper gateway.",
+  "description": "Use your organization\u2019s Opper models in VS Code chat, with browser sign-in and project usage tracking.",
   "icon": "images/icon.png",
   "version": "0.1.0",
   "publisher": "opperai",
@@ -106,19 +106,6 @@
           "default": true,
           "markdownDescription": "List your org's deployed **dynamic routes** as `dynamic/<name>`. The routing graph picks the model per request."
         },
-        "opper.dynamicRouteToolCalling": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Advertise dynamic routes as tool-calling capable. Opper cannot know this ahead of time \u2014 the graph picks the model per request \u2014 so this is a promise you make on your route's behalf. Turn it off if a route can land on a model without tool support; the route then stays out of agent mode instead of failing mid-turn."
-        },
-        "opper.modelFilter": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "markdownDescription": "If non-empty, list only model ids containing one of these substrings (case-insensitive), e.g. `[\"claude\", \"gpt-5\"]`. Keeps the picker short when the full catalogue is more than you need."
-        },
         "opper.login.clientId": {
           "type": "string",
           "default": "opper_app_p-xX3vmCeoZLEZqmycoglw",
@@ -130,14 +117,16 @@
           "default": "https://platform.opper.ai",
           "scope": "application",
           "description": "Trusted browser approval origin."
-        },
-        "opper.login.simulator": {
-          "type": "boolean",
-          "default": false,
-          "scope": "application",
-          "description": "Enable proposed renewal contract for a loopback simulator only. Not a deployed API contract."
         }
       }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "opper.retrySave",
+          "when": "opper.hasPendingSave"
+        }
+      ]
     }
   },
   "scripts": {
@@ -146,15 +135,17 @@
     "typecheck": "tsc --noEmit",
     "test": "tsc -p . --noEmit false && node --test test/*.test.js",
     "vscode:prepublish": "npm run typecheck && node esbuild.js --production",
-    "prototype:login": "node prototype/server.cjs"
+    "prototype:login": "node prototype/server.cjs",
+    "postinstall": "patch-package --error-on-fail"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.104.0",
     "esbuild": "^0.25.0",
+    "patch-package": "8.0.1",
     "typescript": "^5.6.0"
   },
   "dependencies": {
-    "@opperai/login": "file:vendor/opperai-login-0.4.1-jose-review.1.tgz"
+    "@opperai/login": "0.4.1"
   }
 }

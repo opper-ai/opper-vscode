@@ -261,11 +261,7 @@ export function readFilter(): CatalogFilter {
 		showModels: cfg.get('showModels', DEFAULT_FILTER.showModels),
 		showPools: cfg.get('showPools', DEFAULT_FILTER.showPools),
 		showDynamicRoutes: cfg.get('showDynamicRoutes', DEFAULT_FILTER.showDynamicRoutes),
-		dynamicRouteToolCalling: cfg.get(
-			'dynamicRouteToolCalling',
-			DEFAULT_FILTER.dynamicRouteToolCalling,
-		),
-		modelFilter: cfg.get('modelFilter', DEFAULT_FILTER.modelFilter),
+
 	};
 }
 

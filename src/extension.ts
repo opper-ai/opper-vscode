@@ -10,6 +10,11 @@ const VENDOR = 'opper';
 
 export function activate(context: vscode.ExtensionContext): void {
 	const auth = new Auth(context.secrets);
+ const updateRecovery = () => vscode.commands.executeCommand('setContext', 'opper.hasPendingSave', auth.hasPendingSave);
+ void updateRecovery();
+ const run = async (action: () => Promise<unknown>) => {
+  try { await runAction(action); } finally { await updateRecovery(); }
+ };
 	const provider = new OpperChatModelProvider(auth);
 	const budget = new BudgetView(auth, baseUrl, summary => provider.setBudget(summary));
 	provider.onUsage=()=>{void budget.refresh();};
@@ -35,7 +40,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 		// Storing a key changes which models exist, so the picker has to be
 		// told rather than waiting for its next refresh.
-		auth.onDidChange(() => { provider.resetContext(); provider.refresh(); void budget.refresh(true); }),
+		auth.onDidChange(() => { void updateRecovery(); provider.resetContext(); provider.refresh(); void budget.refresh(true); }),
 
 		// The gear icon next to "Opper" in the model picker — declared as
 		// contributes.languageModelChatProviders[].managementCommand.
@@ -64,7 +69,7 @@ export function deactivate(): void {
 	// Everything is registered through context.subscriptions.
 }
 
-async function run(action: () => Promise<unknown>): Promise<void> {
+async function runAction(action: () => Promise<unknown>): Promise<void> {
 	try { await action(); } catch (err) {
 		void vscode.window.showErrorMessage(err instanceof Error ? err.message : 'Opper sign-in failed.');
 	}

@@ -120,10 +120,10 @@ test('legacy local compliance switches do not hide server-authorized models', ()
  assert.equal(map([CHAT, us], { euOnly: true, zdrOnly: true }).length, 2);
 });
 
-test('modelFilter matches on substring, case-insensitively', () => {
+test('legacy local model filter does not hide authorized models', () => {
 	const gpt = { ...CHAT, id: 'openai/GPT-5' };
 	const ids = map([CHAT, gpt], { modelFilter: ['gpt'] }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['openai/GPT-5']);
+	assert.deepStrictEqual(ids, [CHAT.id, 'openai/GPT-5']);
 });
 
 test('pools and routes can be hidden independently', () => {
@@ -145,15 +145,12 @@ test('a dynamic route is listed with the version it would execute', () => {
 	assert.match(r.tooltip, /picks the model per request/);
 });
 
-test('a route never claims image input, and its tool calling is opt-out', () => {
-	// Opper cannot know what the graph will pick, so tool calling is a promise
-	// the user makes on the route's behalf.
-	assert.strictEqual(map([ROUTE])[0].capabilities.toolCalling, true);
-	assert.strictEqual(map([ROUTE])[0].capabilities.imageInput, false);
-	assert.strictEqual(
-		map([ROUTE], { dynamicRouteToolCalling: false })[0].capabilities.toolCalling,
-		false,
-	);
+test('route tool support follows server metadata, not a local override', () => {
+ const withoutTools = { ...ROUTE, opper: { ...ROUTE.opper, capabilities: [] } };
+ const withTools = { ...ROUTE, opper: { ...ROUTE.opper, capabilities: ['tools'] } };
+ assert.equal(map([withoutTools], { dynamicRouteToolCalling: true })[0].capabilities.toolCalling, false);
+ assert.equal(map([withTools], { dynamicRouteToolCalling: false })[0].capabilities.toolCalling, true);
+ assert.equal(map([withTools])[0].capabilities.imageInput, false);
 });
 
 test('a route without server context metadata is omitted instead of inventing 128k', () => {

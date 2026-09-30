@@ -10,6 +10,7 @@ export class Auth {
 	private readonly changed = new vscode.EventEmitter<void>();
 	readonly onDidChange = this.changed.event;
 	private readonly sessions: Sessions;
+	get hasPendingSave(): boolean { return this.sessions.hasPendingSave; }
 	private busy = false;
 	private prompting = false;
 	private lastPrompt = 0;
@@ -67,7 +68,7 @@ export class Auth {
 		this.busy = true;
 		try {
 			const cfg = vscode.workspace.getConfiguration('opper');
-			const opts = { baseUrl: this.origin(), platformUrl: cfg.get<string>('login.platformUrl') ?? 'https://platform.opper.ai', clientId: cfg.get<string>('login.clientId') ?? 'opper_app_p-xX3vmCeoZLEZqmycoglw', pilot: cfg.get<boolean>('login.simulator') ?? false };
+			const opts = { baseUrl: this.origin(), platformUrl: cfg.get<string>('login.platformUrl') ?? 'https://platform.opper.ai', clientId: cfg.get<string>('login.clientId') ?? 'opper_app_p-xX3vmCeoZLEZqmycoglw', pilot: false };
 			const flow = new DeviceLogin(opts);
 			const s = await this.sessions.read();
 			const previous = renew && s && 'credential' in s ? s.credential : undefined;
@@ -90,7 +91,7 @@ export class Auth {
 					if (!token.isCancellationRequested) throw err;
 				} finally { listener.dispose(); }
 			});
-		} finally { this.busy = false; }
+		} finally { this.busy = false; if (this.hasPendingSave) this.changed.fire(); }
 	}
 	async retrySave(): Promise<void> { await this.sessions.retrySave(); this.changed.fire(); }
 	async promptForApiKey(): Promise<string | undefined> {
