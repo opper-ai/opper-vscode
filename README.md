@@ -32,7 +32,7 @@ npm run compile
 npm test
 ```
 
-Press **F5** to open an Extension Development Host. See [review notes](prototype/REVIEW.md) for testing and release status.
+Press **F5** to open an Extension Development Host.
 
 ## License
 

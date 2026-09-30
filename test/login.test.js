@@ -2,9 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Sessions } = require('../out/session.js');
 const { DeviceLogin, credentialFromResponse, loginUrl } = require('../out/device-login.js');
-const { simulator } = require('../prototype/server.cjs');
-const options = { baseUrl: 'http://127.0.0.1:43187', platformUrl: 'http://127.0.0.1:43187', clientId: 'vscode-prototype', pilot: true };
-const response = () => ({ api_key: 'synthetic', credential_id: 'c1', user_id: 'u1', organization_id: 'o1', project_id: 'p1', client_id: options.clientId, expires_at: new Date(Date.now() + 60000).toISOString() });
+const options = { baseUrl: 'http://127.0.0.1:43187', platformUrl: 'http://127.0.0.1:43187', clientId: 'vscode-prototype' };
+const response = () => ({ api_key: 'synthetic', credential_id: 'c1', user_id: 'u1', org_id: 1, project_id: 2, client_id: options.clientId, expires_at: new Date(Date.now() + 60000).toISOString() });
 function store() {
   const values = new Map();
   return { fail: false, async get(k) { return values.get(k); }, async store(k, v) { if (this.fail) throw Error('disk failed'); values.set(k,v); } };
@@ -30,45 +29,11 @@ test('failed storage blocks predecessor and retries replacement without another 
   s.fail = false; await sessions.retrySave();
   assert.equal((await sessions.credential(options.baseUrl)).key, 'replacement');
 });
-test('renewal checks user, organization, client, origin and actual rotation', () => {
-  const first = credentialFromResponse(response(), options);
-  for (const field of ['user_id', 'organization_id', 'client_id']) {
-    assert.throws(() => credentialFromResponse({ ...response(), [field]: 'wrong', api_key: 'new', credential_id: 'c2' }, options, first), /identity|another client/);
-  }
-  assert.throws(() => credentialFromResponse(response(), options, first), /did not rotate/);
-  assert.throws(() => credentialFromResponse({ ...response(), expires_at: undefined }, options), /expires_at/);
-});
 test('legacy response does not invent expiry or identity', () => {
-  assert.deepEqual(credentialFromResponse({ api_key: 'legacy' }, { ...options, pilot: false }), { key: 'legacy', origin: options.baseUrl, clientId: options.clientId });
+  assert.deepEqual(credentialFromResponse({ api_key: 'legacy' }, { ...options }), { key: 'legacy', origin: options.baseUrl, clientId: options.clientId });
 });
-test('refuses unexpected browser destinations and remote pilot endpoints', () => {
+test('refuses unexpected browser destinations', () => {
   assert.throws(() => loginUrl({ verification_uri: 'https://evil.example' }, options.platformUrl), /unexpected/);
-  assert.throws(() => new DeviceLogin({ ...options, baseUrl: 'https://api.opper.ai' }), /local simulator/);
-});
-test('device HTTP flow: approve, retry poll, rotate, reject predecessor and superseded delivery', async t => {
-  const server = simulator(); await new Promise(r => server.listen(0, '127.0.0.1', r));
-  t.after(() => { server.closeAllConnections(); server.close(); });
-  const origin = `http://127.0.0.1:${server.address().port}`;
-  const flow = new DeviceLogin({ ...options, baseUrl: origin, platformUrl: origin });
-  const signal = AbortSignal.timeout(10000);
-  const approve = async d => fetch(origin + '/approve', { method: 'POST', body: new URLSearchParams({ device: d.device_code, decision: 'allow' }) });
-  const d = await flow.start(signal); await approve(d); const first = await flow.poll(d, signal);
-  assert.equal((await flow.poll(d, signal)).key, first.key);
-  const renew = await flow.start(signal, first); await approve(renew); const replacement = await flow.poll(renew, signal, first);
-  assert.notEqual(replacement.key, first.key);
-  const me = key => fetch(origin + '/v3/me', { headers: { Authorization: `Bearer ${key}` } });
-  assert.equal((await me(first.key)).status, 401); assert.equal((await me(replacement.key)).status, 200);
-  await assert.rejects(flow.poll(d, signal), /approval failed/);
-});
-test('denial and cancellation do not produce a credential', async t => {
-  const server = simulator(); await new Promise(r => server.listen(0, '127.0.0.1', r));
-  t.after(() => { server.closeAllConnections(); server.close(); });
-  const origin = `http://127.0.0.1:${server.address().port}`;
-  const flow = new DeviceLogin({ ...options, baseUrl: origin, platformUrl: origin });
-  const signal = AbortSignal.timeout(5000); const d = await flow.start(signal);
-  await fetch(origin + '/approve', { method: 'POST', body: new URLSearchParams({ device: d.device_code, decision: 'deny' }) });
-  await assert.rejects(flow.poll(d, signal), /denied/);
-  await assert.rejects(flow.poll(d, AbortSignal.abort()), /abort/i);
 });
 test('failed first save also blocks use until recovered', async () => {
   const s = store(); s.fail = true; const sessions = new Sessions(s);
@@ -111,7 +76,7 @@ test('VS Code auth sign-out suppresses legacy and environment fallback after rel
     ? new Response(JSON.stringify({ errors: [{ type: 'HTTPException', message: 'authorization_pending', detail: 'authorization_pending' }] }), { status: 400 })
     : new Response(JSON.stringify({ api_key: 'synthetic-approved' }), { status: 200 });
   try {
-    const flow = new DeviceLogin({ ...options, pilot: false });
+    const flow = new DeviceLogin({ ...options });
     const result = await flow.poll({ device_code: 'synthetic', expires_in: 10, interval: 1 }, AbortSignal.timeout(8000));
     assert.equal(result.key, 'synthetic-approved'); assert.equal(polls, 3);
   } finally { global.fetch = original; }
@@ -120,12 +85,12 @@ test('VS Code auth sign-out suppresses legacy and environment fallback after rel
   const original = global.fetch;
   global.fetch = async () => new Response(JSON.stringify({ errors: [{ detail: 'access_denied' }] }), { status: 400 });
   try {
-    await assert.rejects(new DeviceLogin({ ...options, pilot: false }).poll({ device_code: 'synthetic', expires_in: 10, interval: 1 }, AbortSignal.timeout(5000)), /denied/);
+    await assert.rejects(new DeviceLogin({ ...options }).poll({ device_code: 'synthetic', expires_in: 10, interval: 1 }, AbortSignal.timeout(5000)), /denied/);
   } finally { global.fetch = original; }
  });
 test('shared live flow sends renewal fields and preserves metadata',async()=>{
  const original=global.fetch;let fields;
- const live={...options,pilot:false};
+ const live={...options};
  const previous={key:'old',origin:options.baseUrl,clientId:options.clientId,credentialId:'10',organizationId:'1',userEmail:'dev@example.invalid'};
  global.fetch=async(url,init)=>{
   if(url.endsWith('/device')){fields=Object.fromEntries(init.body);return Response.json({device_code:'device',user_code:'CODE',verification_uri:options.platformUrl+'/activate',expires_in:10,interval:1});}
@@ -135,5 +100,18 @@ test('shared live flow sends renewal fields and preserves metadata',async()=>{
 });
 test('cancelled shared polling makes no token request',async()=>{
  const original=global.fetch;let requests=0;global.fetch=async()=>{requests++;throw Error('should not request');};
- try{await assert.rejects(new DeviceLogin({...options,pilot:false}).poll({device_code:'test',expires_in:600,interval:5},AbortSignal.abort()),/abort/i);assert.equal(requests,0);}finally{global.fetch=original;}
+ try{await assert.rejects(new DeviceLogin({...options}).poll({device_code:'test',expires_in:600,interval:5},AbortSignal.abort()),/abort/i);assert.equal(requests,0);}finally{global.fetch=original;}
 });
+
+ test('renewal rejects changed identity and unchanged credentials', async () => {
+ const original = global.fetch;
+ const previous = { key: 'old', credentialId: '1', organizationId: '1', userEmail: 'dev@example.invalid', origin: options.baseUrl, clientId: options.clientId };
+ const good = { api_key: 'replacement', credential_id: '2', org_id: 1, user: { email: previous.userEmail } };
+ try {
+  for (const override of [{org_id:2}, {user:{email:'other@example.invalid'}}, {api_key:'old'}, {credential_id:'1'}]) {
+   global.fetch = async () => Response.json({...good,...override});
+   await assert.rejects(new DeviceLogin(options).poll({device_code:'test',expires_in:10,interval:1}, AbortSignal.timeout(5000), previous), /different user|did not replace/);
+  }
+  await assert.rejects(new DeviceLogin(options).start(AbortSignal.timeout(1000), {...previous,clientId:'other'}), /original client/);
+ } finally { global.fetch=original; }
+ });

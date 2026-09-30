@@ -1,5 +1,27 @@
 # Change Log
 
+## 0.2.0
+
+### Breaking changes
+
+- Removed `opper.euOnly`, `opper.zdrOnly`, and `opper.modelFilter`. Manage model
+  access and compliance in Opper; old local values are ignored. This can expand
+  the visible list to all models the key is authorized to use.
+- Removed `opper.dynamicRouteToolCalling`. Routes must report `tools` in server
+  metadata to be advertised as tool-capable; some routes may leave Agent mode.
+- Removed the developer-only `opper.login.simulator` setting.
+- Use **Opper: Account and Models** or **Opper: Sign In** instead of the old
+  **Manage API Key** command. Existing saved keys continue to work.
+
+### Improvements
+
+- Browser sign-in and renewal with organization SSO through Opper.
+- Project allowance, spending, and reset date in a budget panel and footer summary.
+- Permission-controlled organization billing details.
+- Server-authorized model discovery and server-reported context limits.
+- Removed local model/compliance overrides and prototype settings.
+- Improved credential expiry handling, cancellation, and secure storage recovery.
+
 ## 0.1.1
 
 - Reads the new shape of `opper.zdr` on `/v3/compat/models`: an object of

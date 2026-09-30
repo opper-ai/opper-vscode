@@ -31,7 +31,7 @@ test('catalog switches keys, expires, and cannot resurrect an invalidated fetch'
  assert.notEqual((await c.get('key-a',fetcher,60007))[0].id,'stale');
 });
 test('live login preserves agreed metadata without requiring it from legacy servers', () => {
- const opts={baseUrl:'https://api.opper.ai',platformUrl:'https://platform.opper.ai',clientId:'vscode',pilot:false};
+ const opts={baseUrl:'https://api.opper.ai',platformUrl:'https://platform.opper.ai',clientId:'vscode'};
  const c=credentialFromResponse({api_key:'synthetic',credential_id:'42',org_id:123,project_id:456,expires_at:null},opts);
  assert.equal(c.organizationId,'123'); assert.equal(c.projectId,'456'); assert.equal(c.credentialId,'42'); assert.equal(c.expiresAt,null);
  const date='2030-01-01T00:00:00Z';assert.equal(credentialFromResponse({api_key:'k',expires_at:date},opts).expiresAt,date);
