@@ -40,7 +40,7 @@ jobs:
           fi
 
       - run: npm test
-      - run: npx @vscode/vsce package --out "opper-vscode-${{ github.ref_name }}.vsix"
+      - run: npx @vscode/vsce package --no-dependencies --out "opper-vscode-${{ github.ref_name }}.vsix"
 
       # Exchanges the GitHub OIDC token for an Entra one. No secret is stored:
       # these three ids are not sensitive, and the token lives minutes.
