@@ -1,7 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { toChatInformation, kindQuery, DEFAULT_FILTER } = require('../out/catalog.js');
+const { toChatInformation, kindQuery, zdrByDefault, DEFAULT_FILTER } = require('../out/catalog.js');
+
+// What `opper.zdr` carries: retention facts, `true` = content is held. ZDR by
+// default means logging is known-off and moderation is not known-on.
+const ZDR = {
+	logging: false,
+	moderation: false,
+	caching: false,
+	training: false,
+	subprocessors: false,
+};
 
 const CHAT = {
 	id: 'anthropic/claude-sonnet-4.5',
@@ -17,7 +27,7 @@ const CHAT = {
 		max_output_tokens: 64000,
 		region: 'EU',
 		country: 'Germany',
-		zdr: 'always',
+		zdr: ZDR,
 		gdpr_residency: 'EU',
 	},
 };
@@ -61,6 +71,7 @@ const ROUTE = {
 const map = (entries, overrides = {}) =>
 	toChatInformation(entries, { ...DEFAULT_FILTER, ...overrides });
 const byId = (list) => Object.fromEntries(list.map((m) => [m.id, m]));
+const withZdr = (id, zdr) => ({ ...CHAT, id, opper: { ...CHAT.opper, zdr } });
 
 test('an embedding model never reaches the chat picker', () => {
 	const ids = map([CHAT, EMBEDDING]).map((m) => m.id);
@@ -111,7 +122,7 @@ test('pool and pinned model stay distinguishable in the picker', () => {
 test('residency and ZDR surface in the picker detail line', () => {
 	const m = map([CHAT])[0];
 	assert.strictEqual(m.detail, 'anthropic · Germany · ZDR');
-	assert.match(m.tooltip, /Zero data retention by default/);
+	assert.match(m.tooltip, /Zero data retention: on by default\./);
 	assert.match(m.tooltip, /\$3\.00 in \/ \$15\.00 out per 1M tokens/);
 });
 
@@ -206,4 +217,18 @@ test('ordering is stable among concrete models', () => {
 		map([a, b, POOL]).map((m) => m.id),
 		['claude-sonnet-4.5', 'z/featured', 'a/ordinary'],
 	);
+});
+
+test('zdrByDefault: the facts rule, and the retired string', () => {
+	assert.strictEqual(zdrByDefault(ZDR), true);
+	assert.strictEqual(zdrByDefault({ logging: false, moderation: null }), true);
+	assert.strictEqual(zdrByDefault({ logging: false, moderation: true }), false);
+	assert.strictEqual(zdrByDefault({ logging: null, moderation: false }), false);
+	assert.strictEqual(zdrByDefault({ logging: true, moderation: false }), false);
+	assert.strictEqual(zdrByDefault({}), false);
+	assert.strictEqual(zdrByDefault('always'), true);
+	assert.strictEqual(zdrByDefault('enterprise'), false);
+	assert.strictEqual(zdrByDefault(null), false);
+	assert.strictEqual(zdrByDefault(undefined), false);
+	assert.strictEqual(zdrByDefault([]), false);
 });
