@@ -1,50 +1,38 @@
 # Opper for VS Code
 
-Adds [Opper](https://opper.ai)'s models to the VS Code chat model picker, so Copilot Chat — agent mode included — runs on any model Opper can reach, through the EU-hosted Opper gateway.
+Use [Opper](https://opper.ai) models in VS Code Copilot Chat, including Agent mode with supported models.
 
-Built on the [Language Model Chat Provider API](https://code.visualstudio.com/api/extension-guides/ai/language-model-chat-provider) (VS Code 1.104+). Models added this way need **no Copilot subscription and no GitHub sign-in**.
-
-- **700+ models, discovered at runtime.** No hardcoded model ids.
-- **Pools** — a bare name like `claude-sonnet-4.5` that load-balances across every provider serving it.
-- **Your dynamic routes** — deployed routing graphs, as `dynamic/<name>`. The graph picks the model per request.
-- **Residency and ZDR in the picker**, with `opper.euOnly` / `opper.zdrOnly` to narrow the list.
-- **Scoped to your policy.** Discovery is filtered server-side by your comply allowlist, so a model your policy denies is never offered.
-
-## Setup
+## Get started
 
 1. Install the extension.
-2. Run **Opper: Manage API Key** and paste a key from [platform.opper.ai](https://platform.opper.ai). It goes into VS Code's `SecretStorage`, never `settings.json`.
-3. Open Chat and pick an Opper model.
+2. Run **Opper: Sign In** from the Command Palette and approve in your browser.
+3. Open Chat and choose an Opper model.
 
-Nothing is listed without a key — the model list is scoped to it.
+Use your existing Opper account, including your organization’s configured SSO. No Opper CLI installation or manual key copying is needed. Credentials are stored in VS Code’s secure storage.
 
-## Settings
+## Models and access
 
-| Setting | Default | |
-| --- | --- | --- |
-| `opper.baseUrl` | `https://api.opper.ai` | Point at another gateway. |
-| `opper.showModels` | `true` | List concrete models. |
-| `opper.showPools` | `true` | List load-balancing names. |
-| `opper.showDynamicRoutes` | `true` | List your deployed routes. |
-| `opper.dynamicRouteToolCalling` | `true` | Offer routes in agent mode. |
-| `opper.euOnly` | `false` | EU-hosted models only. |
-| `opper.zdrOnly` | `false` | Zero-data-retention models only. |
-| `opper.modelFilter` | `[]` | Substrings to narrow a long list. |
+The model picker loads the models, pools, and dynamic routes available to your key. Your organization manages access and policies in Opper.
 
-**Only pools and routes:** gear next to "Opper" in the model picker → *Choose what to list…* → untick **Models**.
+Use **Opper: Account and Models** to view your account, manage sign-in, or choose which model types appear.
 
-**Which key am I using?** The gear menu leads with it — `Opper · <org> · project <name> · N models`. Comply rules are scoped to the key's *project*, so that line is the fastest way to spot a key pointing somewhere you didn't expect. `OPPER_API_KEY` is used only when no key is stored, and the line says so when it is.
+## Usage and budget
 
-**Dynamic routes and agent mode:** Opper can't know ahead of time whether a route supports tool calling — the graph decides per request. `opper.dynamicRouteToolCalling` is a promise you make on the route's behalf. Turn it off if a route can land on a model without tool support.
+Hover over **Opper** in the status bar for a usage summary. Click it to see your project’s spending, allowance, remaining amount, and reset date, where configured.
+
+Organization billing details appear only when you have permission to view them.
 
 ## Development
 
-```bash
-npm install && npm run compile   # bundle to dist/
-npm test                         # typecheck + node --test
+Requires VS Code 1.104 or later.
+
+```sh
+npm install
+npm run compile
+npm test
 ```
 
-<kbd>F5</kbd> launches an Extension Development Host with the extension loaded.
+Press **F5** to open an Extension Development Host.
 
 ## License
 

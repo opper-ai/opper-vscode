@@ -1,9 +1,9 @@
 {
   "name": "opper-vscode",
   "displayName": "Opper",
-  "description": "Use any of Opper's 700+ models — plus your pools and dynamic routes — in VS Code chat, routed through the EU-hosted Opper gateway.",
+  "description": "Use your organization\u2019s Opper models in VS Code chat, with browser sign-in and project usage tracking.",
   "icon": "images/icon.png",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "opperai",
   "license": "MIT",
   "engines": {
@@ -38,7 +38,7 @@
     "commands": [
       {
         "command": "opper.manage",
-        "title": "Opper: Manage API Key",
+        "title": "Account and Models",
         "category": "Opper"
       },
       {
@@ -48,7 +48,37 @@
       },
       {
         "command": "opper.signOut",
-        "title": "Opper: Sign Out",
+        "title": "Sign Out",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.signIn",
+        "title": "Sign In",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.renew",
+        "title": "Renew Sign-in",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.retrySave",
+        "title": "Retry Saving Sign-in",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.refreshModels",
+        "title": "Refresh Models",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.context",
+        "title": "Show Last Request Context",
+        "category": "Opper"
+      },
+      {
+        "command": "opper.budget",
+        "title": "Show Budget",
         "category": "Opper"
       }
     ],
@@ -58,47 +88,45 @@
         "opper.baseUrl": {
           "type": "string",
           "default": "https://api.opper.ai",
-          "markdownDescription": "Base URL of the Opper API. Point this at a self-hosted or regional gateway if you run one; the extension appends `/v3/...` itself."
+          "markdownDescription": "Base URL of the Opper API. Point this at a self-hosted or regional gateway if you run one; the extension appends `/v3/...` itself.",
+          "scope": "application"
         },
         "opper.showModels": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "List concrete catalog models — a specific provider's row, e.g. `anthropic/claude-sonnet-4.5`. Untick this and leave **Show Pools** / **Show Dynamic Routes** on to reduce the picker to Opper's own routing constructs."
+          "markdownDescription": "List concrete catalog models \u2014 a specific provider's row, e.g. `anthropic/claude-sonnet-4.5`. Untick this and leave **Show Pools** / **Show Dynamic Routes** on to reduce the picker to Opper's own routing constructs."
         },
         "opper.showPools": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "List Opper **pools** — bare model names such as `claude-sonnet-4.5` that load-balance across every provider serving that model. A pool only advertises a capability its every member has."
+          "markdownDescription": "List Opper **pools** \u2014 bare model names such as `claude-sonnet-4.5` that load-balance across every provider serving that model. A pool only advertises a capability its every member has."
         },
         "opper.showDynamicRoutes": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "List your org's deployed **dynamic routes** as `dynamic/<name>`. The routing graph picks the model per request."
         },
-        "opper.dynamicRouteToolCalling": {
-          "type": "boolean",
-          "default": true,
-          "markdownDescription": "Advertise dynamic routes as tool-calling capable. Opper cannot know this ahead of time — the graph picks the model per request — so this is a promise you make on your route's behalf. Turn it off if a route can land on a model without tool support; the route then stays out of agent mode instead of failing mid-turn."
+        "opper.login.clientId": {
+          "type": "string",
+          "default": "opper_app_p-xX3vmCeoZLEZqmycoglw",
+          "scope": "application",
+          "description": "Registered public OAuth client ID dedicated to VS Code. No client secret."
         },
-        "opper.euOnly": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Only list models Opper reports as hosted in the EU (`opper.region == \"EU\"`). Pools are included only when *every* member is EU-hosted."
-        },
-        "opper.zdrOnly": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "Only list models with zero data retention by default — read from the `opper.zdr` facts: logging does not retain content and no moderation layer holds it. A model whose logging retention is not established is excluded; ZDR is never assumed."
-        },
-        "opper.modelFilter": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [],
-          "markdownDescription": "If non-empty, list only model ids containing one of these substrings (case-insensitive), e.g. `[\"claude\", \"gpt-5\"]`. Keeps the picker short when the full catalogue is more than you need."
+        "opper.login.platformUrl": {
+          "type": "string",
+          "default": "https://platform.opper.ai",
+          "scope": "application",
+          "description": "Trusted browser approval origin."
         }
       }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "opper.retrySave",
+          "when": "opper.hasPendingSave"
+        }
+      ]
     }
   },
   "scripts": {
@@ -106,12 +134,17 @@
     "watch": "node esbuild.js --watch",
     "typecheck": "tsc --noEmit",
     "test": "tsc -p . --noEmit false && node --test test/*.test.js",
-    "vscode:prepublish": "npm run typecheck && node esbuild.js --production"
+    "vscode:prepublish": "npm run typecheck && node esbuild.js --production",
+    "postinstall": "patch-package --error-on-fail"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.104.0",
     "esbuild": "^0.25.0",
+    "patch-package": "8.0.1",
     "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "@opperai/login": "0.4.1"
   }
 }

@@ -61,6 +61,7 @@ const POOL = {
 
 const ROUTE = {
 	id: 'dynamic/support',
+	context_length: 128000,
 	object: 'model',
 	created: 1704067200,
 	owned_by: 'opper',
@@ -125,73 +126,15 @@ test('residency and ZDR surface in the picker detail line', () => {
 	assert.match(m.tooltip, /\$3\.00 in \/ \$15\.00 out per 1M tokens/);
 });
 
-test('euOnly drops a non-EU model', () => {
-	const us = { ...CHAT, id: 'openai/gpt-5', opper: { ...CHAT.opper, region: 'US' } };
-	const ids = map([CHAT, us], { euOnly: true }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5']);
+test('legacy local compliance switches do not hide server-authorized models', () => {
+ const us = { ...CHAT, id: 'other/model', opper: { ...CHAT.opper, region: 'US', zdr: 'enterprise' } };
+ assert.equal(map([CHAT, us], { euOnly: true, zdrOnly: true }).length, 2);
 });
 
-test('zdrOnly derives "by default" from the retention facts', () => {
-	// Logging must be known-off; moderation must not be known-on. A `null`
-	// (not established, or a pool whose members disagree) only passes on the
-	// moderation side.
-	const moderated = withZdr('x/moderated', { ...ZDR, moderation: true });
-	const unknownLog = withZdr('x/unknown-logging', { ...ZDR, logging: null });
-	const unknownMod = withZdr('x/unknown-moderation', { logging: false, moderation: null });
-	const ids = map([CHAT, moderated, unknownLog, unknownMod], { zdrOnly: true }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['anthropic/claude-sonnet-4.5', 'x/unknown-moderation']);
-});
-
-test('zdrOnly never infers ZDR from a missing, null or malformed field', () => {
-	const missing = withZdr('x/missing', undefined);
-	const nul = withZdr('x/null', null);
-	const junk = withZdr('x/junk', 'yes');
-	assert.deepStrictEqual(map([missing, nul, junk], { zdrOnly: true }), []);
-	assert.strictEqual(map([missing])[0].detail, 'anthropic · Germany');
-});
-
-test('the retired string form still reads: always is on, enterprise is not', () => {
-	// Kept for the rollout window; the string leaves the wire with the facts.
-	const always = withZdr('x/always', 'always');
-	const ent = withZdr('x/ent', 'enterprise');
-	const ids = map([always, ent], { zdrOnly: true }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['x/always']);
-	assert.strictEqual(map([always])[0].detail, 'anthropic · Germany · ZDR');
-});
-
-test('the tooltip names what blocks ZDR by default', () => {
-	const moderated = withZdr('x/moderated', { ...ZDR, moderation: true });
-	const unknownLog = withZdr('x/unknown-logging', { ...ZDR, logging: null });
-	const got = byId(map([moderated, unknownLog]));
-	assert.match(
-		got['x/moderated'].tooltip,
-		/Not zero data retention by default: moderation holds content\./,
-	);
-	assert.doesNotMatch(got['x/moderated'].detail, /ZDR/);
-	assert.match(
-		got['x/unknown-logging'].tooltip,
-		/Not zero data retention by default: logging retention not established\./,
-	);
-});
-
-test('zdrByDefault: the facts rule, and the retired string', () => {
-	assert.strictEqual(zdrByDefault(ZDR), true);
-	assert.strictEqual(zdrByDefault({ logging: false, moderation: null }), true);
-	assert.strictEqual(zdrByDefault({ logging: false, moderation: true }), false);
-	assert.strictEqual(zdrByDefault({ logging: null, moderation: false }), false);
-	assert.strictEqual(zdrByDefault({ logging: true, moderation: false }), false);
-	assert.strictEqual(zdrByDefault({}), false);
-	assert.strictEqual(zdrByDefault('always'), true);
-	assert.strictEqual(zdrByDefault('enterprise'), false);
-	assert.strictEqual(zdrByDefault(null), false);
-	assert.strictEqual(zdrByDefault(undefined), false);
-	assert.strictEqual(zdrByDefault([]), false);
-});
-
-test('modelFilter matches on substring, case-insensitively', () => {
+test('legacy local model filter does not hide authorized models', () => {
 	const gpt = { ...CHAT, id: 'openai/GPT-5' };
 	const ids = map([CHAT, gpt], { modelFilter: ['gpt'] }).map((m) => m.id);
-	assert.deepStrictEqual(ids, ['openai/GPT-5']);
+	assert.deepStrictEqual(ids, [CHAT.id, 'openai/GPT-5']);
 });
 
 test('pools and routes can be hidden independently', () => {
@@ -213,24 +156,16 @@ test('a dynamic route is listed with the version it would execute', () => {
 	assert.match(r.tooltip, /picks the model per request/);
 });
 
-test('a route never claims image input, and its tool calling is opt-out', () => {
-	// Opper cannot know what the graph will pick, so tool calling is a promise
-	// the user makes on the route's behalf.
-	assert.strictEqual(map([ROUTE])[0].capabilities.toolCalling, true);
-	assert.strictEqual(map([ROUTE])[0].capabilities.imageInput, false);
-	assert.strictEqual(
-		map([ROUTE], { dynamicRouteToolCalling: false })[0].capabilities.toolCalling,
-		false,
-	);
+test('route tool support follows server metadata, not a local override', () => {
+ const withoutTools = { ...ROUTE, opper: { ...ROUTE.opper, capabilities: [] } };
+ const withTools = { ...ROUTE, opper: { ...ROUTE.opper, capabilities: ['tools'] } };
+ assert.equal(map([withoutTools], { dynamicRouteToolCalling: true })[0].capabilities.toolCalling, false);
+ assert.equal(map([withTools], { dynamicRouteToolCalling: false })[0].capabilities.toolCalling, true);
+ assert.equal(map([withTools])[0].capabilities.imageInput, false);
 });
 
-test('residency filters do not silently hide the org\'s own routes', () => {
-	// A route has no region to report; filtering it out on euOnly would delete
-	// the user's own deployed routing from the picker with no way to see why.
-	assert.deepStrictEqual(
-		map([ROUTE], { euOnly: true, zdrOnly: true }).map((m) => m.id),
-		['dynamic/support'],
-	);
+test('a route without server context metadata is omitted instead of inventing 128k', () => {
+ assert.deepStrictEqual(map([{ ...ROUTE, context_length: undefined }]), []);
 });
 
 test('all kinds selected sends no ?type= at all', () => {
@@ -282,4 +217,18 @@ test('ordering is stable among concrete models', () => {
 		map([a, b, POOL]).map((m) => m.id),
 		['claude-sonnet-4.5', 'z/featured', 'a/ordinary'],
 	);
+});
+
+test('zdrByDefault: the facts rule, and the retired string', () => {
+	assert.strictEqual(zdrByDefault(ZDR), true);
+	assert.strictEqual(zdrByDefault({ logging: false, moderation: null }), true);
+	assert.strictEqual(zdrByDefault({ logging: false, moderation: true }), false);
+	assert.strictEqual(zdrByDefault({ logging: null, moderation: false }), false);
+	assert.strictEqual(zdrByDefault({ logging: true, moderation: false }), false);
+	assert.strictEqual(zdrByDefault({}), false);
+	assert.strictEqual(zdrByDefault('always'), true);
+	assert.strictEqual(zdrByDefault('enterprise'), false);
+	assert.strictEqual(zdrByDefault(null), false);
+	assert.strictEqual(zdrByDefault(undefined), false);
+	assert.strictEqual(zdrByDefault([]), false);
 });

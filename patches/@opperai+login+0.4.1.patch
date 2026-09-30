@@ -1,0 +1,142 @@
+diff --git a/node_modules/@opperai/login/dist/commonjs/index.d.ts b/node_modules/@opperai/login/dist/commonjs/index.d.ts
+index aa0bf89..3c70a24 100644
+--- a/node_modules/@opperai/login/dist/commonjs/index.d.ts
++++ b/node_modules/@opperai/login/dist/commonjs/index.d.ts
+@@ -54,6 +54,7 @@ export interface RenewalOptions {
+ }
+ /** Kept for callers that use the device-specific options type. */
+ export interface DeviceAuthOptions extends RenewalOptions {
++    signal?: AbortSignal;
+ }
+ export declare class OpperLogin {
+     private clientId;
+@@ -92,7 +93,7 @@ export declare class OpperLogin {
+     /**
+      * Poll for device authorization result. Resolves when the user approves or denies.
+      */
+-    pollDeviceToken(device: DeviceAuthResponse): Promise<AuthResult>;
++    pollDeviceToken(device: DeviceAuthResponse, signal?: AbortSignal): Promise<AuthResult>;
+     private requireRedirectUri;
+     private generateState;
+ }
+diff --git a/node_modules/@opperai/login/dist/commonjs/index.js b/node_modules/@opperai/login/dist/commonjs/index.js
+index 709364f..477a353 100644
+--- a/node_modules/@opperai/login/dist/commonjs/index.js
++++ b/node_modules/@opperai/login/dist/commonjs/index.js
+@@ -136,10 +136,12 @@ class OpperLogin {
+             method: "POST",
+             headers: { "Content-Type": "application/x-www-form-urlencoded" },
+             body,
++            signal: options.signal,
++            redirect: "error",
+         });
+         if (!res.ok) {
+             const err = await res.json().catch(() => ({}));
+-            throw new Error(err.detail ?? "Device authorization failed");
++            throw new Error(err.detail ?? err.errors?.[0]?.detail ?? "Device authorization failed");
+         }
+         const data = await res.json();
+         return {
+@@ -162,11 +164,19 @@ class OpperLogin {
+     /**
+      * Poll for device authorization result. Resolves when the user approves or denies.
+      */
+-    async pollDeviceToken(device) {
+-        let interval = (device.interval ?? 5) * 1000;
++    async pollDeviceToken(device, signal) {
++        if (!Number.isFinite(device.expiresIn) || device.expiresIn <= 0 || !Number.isFinite(device.interval) || device.interval < 0)
++            throw new Error("Invalid device approval lifetime");
++        const bounded = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(Math.ceil(device.expiresIn * 1000))]);
++        let interval = Math.max(1, device.interval) * 1000;
+         const deadline = Date.now() + (device.expiresIn ?? 600) * 1000;
+         while (Date.now() < deadline) {
+-            await new Promise((r) => setTimeout(r, interval));
++            bounded.throwIfAborted();
++            await new Promise((resolve, reject) => {
++                const cancel = () => { clearTimeout(timer); reject(bounded.reason); };
++                const timer = setTimeout(() => { bounded.removeEventListener("abort", cancel); resolve(); }, interval);
++                bounded.addEventListener("abort", cancel, { once: true });
++            });
+             const body = new URLSearchParams({
+                 device_code: device.deviceCode,
+                 client_id: this.clientId,
+@@ -178,6 +188,8 @@ class OpperLogin {
+                 method: "POST",
+                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                 body,
++                signal: AbortSignal.any([bounded, AbortSignal.timeout(30000)]),
++                redirect: "error",
+             });
+             if (res.ok) {
+                 const data = await res.json();
+diff --git a/node_modules/@opperai/login/dist/esm/index.d.ts b/node_modules/@opperai/login/dist/esm/index.d.ts
+index aa0bf89..3c70a24 100644
+--- a/node_modules/@opperai/login/dist/esm/index.d.ts
++++ b/node_modules/@opperai/login/dist/esm/index.d.ts
+@@ -54,6 +54,7 @@ export interface RenewalOptions {
+ }
+ /** Kept for callers that use the device-specific options type. */
+ export interface DeviceAuthOptions extends RenewalOptions {
++    signal?: AbortSignal;
+ }
+ export declare class OpperLogin {
+     private clientId;
+@@ -92,7 +93,7 @@ export declare class OpperLogin {
+     /**
+      * Poll for device authorization result. Resolves when the user approves or denies.
+      */
+-    pollDeviceToken(device: DeviceAuthResponse): Promise<AuthResult>;
++    pollDeviceToken(device: DeviceAuthResponse, signal?: AbortSignal): Promise<AuthResult>;
+     private requireRedirectUri;
+     private generateState;
+ }
+diff --git a/node_modules/@opperai/login/dist/esm/index.js b/node_modules/@opperai/login/dist/esm/index.js
+index ec7e7aa..7cc146d 100644
+--- a/node_modules/@opperai/login/dist/esm/index.js
++++ b/node_modules/@opperai/login/dist/esm/index.js
+@@ -133,10 +133,12 @@ export class OpperLogin {
+             method: "POST",
+             headers: { "Content-Type": "application/x-www-form-urlencoded" },
+             body,
++            signal: options.signal,
++            redirect: "error",
+         });
+         if (!res.ok) {
+             const err = await res.json().catch(() => ({}));
+-            throw new Error(err.detail ?? "Device authorization failed");
++            throw new Error(err.detail ?? err.errors?.[0]?.detail ?? "Device authorization failed");
+         }
+         const data = await res.json();
+         return {
+@@ -159,11 +161,19 @@ export class OpperLogin {
+     /**
+      * Poll for device authorization result. Resolves when the user approves or denies.
+      */
+-    async pollDeviceToken(device) {
+-        let interval = (device.interval ?? 5) * 1000;
++    async pollDeviceToken(device, signal) {
++        if (!Number.isFinite(device.expiresIn) || device.expiresIn <= 0 || !Number.isFinite(device.interval) || device.interval < 0)
++            throw new Error("Invalid device approval lifetime");
++        const bounded = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(Math.ceil(device.expiresIn * 1000))]);
++        let interval = Math.max(1, device.interval) * 1000;
+         const deadline = Date.now() + (device.expiresIn ?? 600) * 1000;
+         while (Date.now() < deadline) {
+-            await new Promise((r) => setTimeout(r, interval));
++            bounded.throwIfAborted();
++            await new Promise((resolve, reject) => {
++                const cancel = () => { clearTimeout(timer); reject(bounded.reason); };
++                const timer = setTimeout(() => { bounded.removeEventListener("abort", cancel); resolve(); }, interval);
++                bounded.addEventListener("abort", cancel, { once: true });
++            });
+             const body = new URLSearchParams({
+                 device_code: device.deviceCode,
+                 client_id: this.clientId,
+@@ -175,6 +185,8 @@ export class OpperLogin {
+                 method: "POST",
+                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                 body,
++                signal: AbortSignal.any([bounded, AbortSignal.timeout(30000)]),
++                redirect: "error",
+             });
+             if (res.ok) {
+                 const data = await res.json();

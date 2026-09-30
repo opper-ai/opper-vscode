@@ -70,11 +70,24 @@ export interface OpperCompatModel {
 	opper?: OpperMeta;
 }
 
+export interface BudgetScope {
+	currency?: string;
+	spent_cents?: number;
+	limit_cents?: number | null;
+	remaining_cents?: number | null;
+	limit_scope?: 'project' | 'organization' | null;
+	period_start?: string;
+	period_end?: string;
+}
+
 /** Identity and spend snapshot for the calling key, from `GET /v3/me`. */
 export interface OpperIdentity {
 	organization?: { name?: string; plan?: string };
 	project?: { name?: string };
-	balance?: { balance_dollars?: number };
+	visibility?: { organization_finance?: boolean };
+	project_spend?: BudgetScope;
+	spend?: BudgetScope;
+	balance?: { currency?: string; balance_cents?: number; balance_dollars?: number };
 	blocked?: boolean;
 	block_reason?: 'balance_exhausted' | 'project_spend_cap_hit' | 'org_spend_cap_hit' | string;
 }
@@ -95,7 +108,8 @@ export interface ChatCompletionChunk {
 		};
 		finish_reason?: string | null;
 	}[];
-	error?: { message?: string; type?: string };
+	usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+	error?: { message?: string; type?: string; code?: string };
 }
 
 /** A request the gateway rejected, carrying enough detail to be actionable. */
@@ -104,6 +118,7 @@ export class OpperApiError extends Error {
 		message: string,
 		readonly status: number,
 		readonly body?: string,
+		readonly code?: string,
 	) {
 		super(message);
 		this.name = 'OpperApiError';
@@ -139,6 +154,7 @@ export class OpperClient {
 		const res = await fetch(this.url(path), {
 			method: 'GET',
 			headers: this.headers(),
+			redirect: 'error',
 			signal,
 		});
 		if (!res.ok) {
@@ -157,6 +173,7 @@ export class OpperClient {
 		const res = await fetch(this.url('/v3/me'), {
 			method: 'GET',
 			headers: this.headers(),
+			redirect: 'error',
 			signal,
 		});
 		if (!res.ok) {
@@ -176,7 +193,8 @@ export class OpperClient {
 		const res = await fetch(this.url('/v3/compat/chat/completions'), {
 			method: 'POST',
 			headers: this.headers(),
-			body: JSON.stringify({ ...body, stream: true }),
+			redirect: 'error',
+			body: JSON.stringify({ ...body, stream: true, stream_options: { include_usage: true } }),
 			signal,
 		});
 		if (!res.ok) {
@@ -207,6 +225,8 @@ export class OpperClient {
 						throw new OpperApiError(
 							chunk.error.message ?? 'the model returned an error mid-stream',
 							res.status,
+							JSON.stringify({ error: chunk.error }),
+							chunk.error.code,
 						);
 					}
 					yield chunk;
@@ -245,7 +265,7 @@ async function toApiError(res: Response, doing: string): Promise<OpperApiError> 
 	}
 	const hint =
 		res.status === 401
-			? ' — check your Opper API key (run "Opper: Manage API Key")'
+			? ' — check your Opper API key (run "Opper: Sign In")'
 			: res.status === 403
 				? ' — this key may not be entitled to that model, or your comply policy denies it'
 				: '';
@@ -253,5 +273,6 @@ async function toApiError(res: Response, doing: string): Promise<OpperApiError> 
 		`Opper failed ${doing}: ${res.status}${detail ? ` ${detail}` : ''}${hint}`,
 		res.status,
 		raw,
+		res.headers.get('X-Opper-Error-Code') ?? undefined,
 	);
 }
