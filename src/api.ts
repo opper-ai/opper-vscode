@@ -75,7 +75,7 @@ export interface BudgetScope {
 	spent_cents?: number;
 	limit_cents?: number | null;
 	remaining_cents?: number | null;
-	limit_scope?: 'project' | 'organization' | null;
+	limit_scope?: 'project' | 'organization' | 'member' | 'role' | null;
 	period_start?: string;
 	period_end?: string;
 }
@@ -86,6 +86,7 @@ export interface OpperIdentity {
 	project?: { name?: string };
 	visibility?: { organization_finance?: boolean };
 	project_spend?: BudgetScope;
+	member_spend?: BudgetScope;
 	spend?: BudgetScope;
 	balance?: { currency?: string; balance_cents?: number; balance_dollars?: number };
 	blocked?: boolean;

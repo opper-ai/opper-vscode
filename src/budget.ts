@@ -30,6 +30,7 @@ export function budgetRows(me: OpperIdentity): BudgetRow[] {
 	const rows: BudgetRow[] = [];
 	if (me.blocked === true) {
 		const reason = me.block_reason === 'project_spend_cap_hit' ? 'Project limit reached'
+			: me.block_reason === 'member_spend_cap_hit' ? 'Your allowance reached'
 			: me.block_reason === 'org_spend_cap_hit' ? 'Organization limit reached'
 			: me.block_reason === 'balance_exhausted' ? 'Organization out of credits' : 'Spending unavailable';
 		rows.push({ label: '$(warning) Spending blocked', description: reason, detail: 'Contact your organization administrator.' });
@@ -48,21 +49,24 @@ export interface AllowanceSummary {
  used: string; total?: string; remaining?: string; percent?: number;
  reset?: string; note?: string;
 }
-/** Project scope only: organization funding is never a personal allowance. */
+/** Personal allowance when supplied; older servers and project keys retain project scope. */
 export function allowanceSummary(me: OpperIdentity): AllowanceSummary {
- const s = me.project_spend;
+ const personal = !!me.member_spend;
+ const s = me.member_spend ?? me.project_spend;
+ const name = personal ? 'Personal' : 'Project';
  if (!s) return { used: 'Unavailable', note: 'Project budget unavailable' };
  const used = money(s.spent_cents, s.currency) ?? 'Unavailable';
  const end = s.period_end ? new Date(s.period_end) : undefined;
  const reset = end && Number.isFinite(end.getTime()) ? end.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) + ' (UTC)' : undefined;
- if (s.limit_cents === null) return { used, reset, note: 'No project allowance set. Organization funding and limits still apply.' };
- if (s.limit_scope !== 'project' || typeof s.limit_cents !== 'number' || !Number.isFinite(s.limit_cents) || s.limit_cents < 0 || s.currency !== 'usd') return { used, reset, note: 'Project allowance unavailable' };
+ if (s.limit_cents === null) return { used, reset, note: personal ? 'No personal allowance set. Project and organization limits still apply.' : 'No project allowance set. Organization funding and limits still apply.' };
+ if (!(personal ? s.limit_scope === 'member' || s.limit_scope === 'role' : s.limit_scope === 'project') || typeof s.limit_cents !== 'number' || !Number.isFinite(s.limit_cents) || s.limit_cents < 0 || s.currency !== 'usd') return { used, reset, note: `${name} allowance unavailable` };
  const percent = s.limit_cents > 0 && typeof s.spent_cents === 'number' && Number.isFinite(s.spent_cents) && s.spent_cents >= 0 ? 100 * s.spent_cents / s.limit_cents : undefined;
- return { used, total: money(s.limit_cents, s.currency), remaining: money(s.remaining_cents, s.currency), percent, reset, note: s.limit_cents === 0 ? 'Project allowance is zero.' : undefined };
+ return { used, total: money(s.limit_cents, s.currency), remaining: money(s.remaining_cents, s.currency), percent, reset, note: s.limit_cents === 0 ? `${name} allowance is zero.` : undefined };
 }
 export function budgetSummary(me: OpperIdentity, updated: Date): string {
  const a = allowanceSummary(me);
  return [me.blocked ? 'Spending blocked — contact your administrator.' : '',
+ me.member_spend ? 'Your allowance (across personal keys in this organization)' : '',
  `Project: ${me.project?.name ?? 'Current project'}`,
  a.total ? `${a.used} used of ${a.total}${a.percent !== undefined ? ` (${Math.round(a.percent)}%)` : ''}` : `${a.used} used`,
  a.remaining ? `${a.remaining} remaining` : a.note,
