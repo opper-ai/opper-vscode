@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.2.1
+
+- Show your personal or role allowance, usage, remaining budget, and reset date.
+- Use your allowance in the footer summary and keep shared project usage separate.
+- Explain when your personal allowance blocks spending; organization billing remains permission-controlled.
+
 ## 0.2.0
 
 ### Breaking changes

@@ -46,3 +46,24 @@ test('budget HTML escapes project data and hides organization data without permi
  assert.match(budgetHtml({...me,visibility:{organization_finance:true}},'nonce'),/Organization billing/);
  assert.match(budgetSummary(me,new Date()),/USD 12.34 used of USD 50.00/);
 });
+test('personal and role allowance lead the panel and footer without exposing organization billing', () => {
+ for (const limit_scope of ['member', 'role']) {
+  const me = {organization:{name:'Opper'},project:{name:'Demo'},project_spend:scope,
+   member_spend:{...scope,limit_scope,spent_cents:200,limit_cents:1000,remaining_cents:800},
+   visibility:{organization_finance:false},balance:{currency:'usd',balance_cents:987654}};
+  const a=allowanceSummary(me);assert.equal(a.total,'USD 10.00');assert.equal(a.percent,20);
+  const html=budgetHtml(me,'nonce');assert.match(html,/Your allowance/);assert.match(html,/Project usage/);
+  assert.match(html,/USD 8.00 remaining/);assert.doesNotMatch(html,/Organization billing|9,876/);
+  assert.equal(html.includes('Allowance set by your role.'),limit_scope==='role');
+  assert.match(budgetSummary(me,new Date()),/USD 2.00 used of USD 10.00/);
+ }
+});
+test('personal no-cap, zero-cap and unavailable caps do not fall back to shared project allowance', () => {
+ const me={project_spend:scope,member_spend:{...scope,limit_scope:null,limit_cents:null}};
+ assert.equal(allowanceSummary(me).total,undefined);
+ assert.match(allowanceSummary(me).note,/No personal allowance/);
+ assert.doesNotMatch(budgetSummary(me,new Date()),/USD 50.00/);
+ assert.match(allowanceSummary({...me,member_spend:{...scope,limit_scope:'member',limit_cents:0}}).note,/Personal allowance is zero/);
+ assert.match(allowanceSummary({...me,member_spend:{...scope,limit_scope:'project'}}).note,/unavailable/);
+ assert.match(budgetHtml({...me,blocked:true,block_reason:'member_spend_cap_hit'},'nonce'),/Your allowance reached/);
+});

@@ -3,7 +3,7 @@
   "displayName": "Opper",
   "description": "Use your organization\u2019s Opper models in VS Code chat, with browser sign-in and project usage tracking.",
   "icon": "images/icon.png",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "opperai",
   "license": "MIT",
   "engines": {
