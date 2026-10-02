@@ -40,7 +40,7 @@ export class BudgetView implements vscode.Disposable {
   try {
    const resolved=await this.auth.resolve();
    if(epoch!==this.epoch)return;
-   if(!resolved){this.snapshot=undefined;this.updated=undefined;this.error='Sign in with Opper to see your project allowance.';this.changed();this.render();return;}
+   if(!resolved){this.snapshot=undefined;this.updated=undefined;this.error='Sign in with Opper to see your allowance.';this.changed();this.render();return;}
    const me=await new OpperClient(origin,resolved.key).getMe(AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]));
    if(epoch!==this.epoch||origin!==this.getBaseUrl()||(await this.auth.resolve())?.key!==resolved.key)return;
    if(epoch!==this.epoch)return;

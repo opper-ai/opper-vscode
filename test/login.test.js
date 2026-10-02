@@ -115,3 +115,13 @@ test('cancelled shared polling makes no token request',async()=>{
   await assert.rejects(new DeviceLogin(options).start(AbortSignal.timeout(1000), {...previous,clientId:'other'}), /original client/);
  } finally { global.fetch=original; }
  });
+
+test('approved renewal drops legacy project metadata and stores the organization credential', async () => {
+ const original=global.fetch;
+ const previous={key:'old',credentialId:'1',organizationId:'1',userEmail:'dev@example.invalid',origin:options.baseUrl,clientId:options.clientId,projectId:'2',projectUuid:'legacy',projectName:'Legacy project'};
+ global.fetch=async()=>Response.json({api_key:'replacement',credential_id:'2',org_id:1,user:{email:previous.userEmail}});
+ try {
+  const next=await new DeviceLogin(options).poll({device_code:'test',expires_in:10,interval:1},AbortSignal.timeout(5000),previous);
+  assert.equal(next.organizationId,'1');assert.equal(next.projectId,undefined);assert.equal(next.projectUuid,undefined);assert.equal(next.projectName,undefined);
+ } finally {global.fetch=original;}
+});

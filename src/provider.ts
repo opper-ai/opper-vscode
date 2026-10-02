@@ -32,7 +32,7 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 	}
 	resetContext(): void { this.contextItem.text = '$(info) Opper'; this.contextDetail = 'Send a message using an Opper model to see the last request’s context estimate.'; this.updateTooltip(); }
 	setBudget(summary?: string): void { this.budgetDetail=summary; this.updateTooltip(); }
-	private updateTooltip(): void { this.contextItem.tooltip=[this.budgetDetail ?? 'Click to view your project allowance.',this.contextDetail].join('\n\n'); }
+	private updateTooltip(): void { this.contextItem.tooltip=[this.budgetDetail ?? 'Click to view your allowance.',this.contextDetail].join('\n\n'); }
 	showContext(): void { void vscode.window.showInformationMessage(this.contextDetail); }
 	private reportContext(model: vscode.LanguageModelChatInformation, used: number, actual: boolean, hasMedia: boolean): void {
 		this.contextDetail = contextSummary(model.id, used, model.maxInputTokens, actual, hasMedia);

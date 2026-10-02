@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.2.2
+
+- Show organization-scoped personal allowances without a placeholder project.
+- Keep project usage visible for project-bound credentials.
+- Verify renewal from legacy project-bound credentials into organization credentials.
+
 ## 0.2.1
 
 - Show your personal or role allowance, usage, remaining budget, and reset date.

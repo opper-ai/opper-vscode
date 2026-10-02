@@ -83,7 +83,7 @@ export interface BudgetScope {
 /** Identity and spend snapshot for the calling key, from `GET /v3/me`. */
 export interface OpperIdentity {
 	organization?: { name?: string; plan?: string };
-	project?: { name?: string };
+	project?: { name?: string } | null;
 	visibility?: { organization_finance?: boolean };
 	project_spend?: BudgetScope;
 	member_spend?: BudgetScope;
