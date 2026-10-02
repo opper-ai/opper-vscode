@@ -19,7 +19,7 @@ test('no direct cap is not unlimited or a zero allowance; missing cap is unavail
  const result=text({project_spend:{...scope,limit_cents:null,remaining_cents:null,limit_scope:null}});
  assert.match(result,/No project limit/);assert.match(result,/funding and limits still apply/);assert.doesNotMatch(result,/remaining|unlimited|USD 0.00/);
  assert.match(text({project_spend:{currency:'usd'}}),/Project limit unavailable/);
- assert.match(text({}),/Project budget unavailable/);
+ assert.match(text({project:{name:'Demo'}}),/Project budget unavailable/);
 });
 test('blocked reasons remain visible without financial permission, including a zero cap',()=>{
  for(const [block_reason,message] of [['project_spend_cap_hit','Project limit reached'],['org_spend_cap_hit','Organization limit reached'],['balance_exhausted','Organization out of credits']]) {
@@ -66,4 +66,16 @@ test('personal no-cap, zero-cap and unavailable caps do not fall back to shared 
  assert.match(allowanceSummary({...me,member_spend:{...scope,limit_scope:'member',limit_cents:0}}).note,/Personal allowance is zero/);
  assert.match(allowanceSummary({...me,member_spend:{...scope,limit_scope:'project'}}).note,/unavailable/);
  assert.match(budgetHtml({...me,blocked:true,block_reason:'member_spend_cap_hit'},'nonce'),/Your allowance reached/);
+});
+
+test('organization credentials show personal allowance without a phantom project', () => {
+ const me={organization:{name:'Opper'},project:null,member_spend:{...scope,limit_scope:'role'},visibility:{organization_finance:false}};
+ const html=budgetHtml(me,'nonce');
+ assert.match(html,/Your allowance/);assert.match(html,/USD 37.66 remaining/);
+ assert.doesNotMatch(html,/Project usage|Project allowance|Current project|Project and organization|Organization billing/);
+ assert.doesNotMatch(JSON.stringify(budgetRows(me)),/Project budget unavailable/);
+ const summary=budgetSummary(me,new Date());assert.match(summary,/Organization: Opper/);assert.doesNotMatch(summary,/Project:/);
+ const missing=budgetHtml({...me,member_spend:undefined},'nonce');
+ assert.match(missing,/Personal allowance unavailable/);assert.doesNotMatch(missing,/Project allowance|Current project/);
+ assert.match(budgetHtml({...me,member_spend:{...me.member_spend,limit_cents:null}},'nonce'),/Organization funding and limits still apply/);
 });
