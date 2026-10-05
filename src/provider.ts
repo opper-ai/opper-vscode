@@ -1,3 +1,5 @@
+import { reasoningOptions } from './effort';
+import { chooseEffort, savedEffort } from './effort-control';
 import { ModelCatalog } from './model-catalog';
 import { contextSummary, estimateTokens, promptEstimate } from './context';
 import { credentialError } from './login-errors';
@@ -42,8 +44,8 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 		this.onUsage?.();
 		this.contextItem.show();
 	}
-	private models(client: OpperClient, key: string, signal: AbortSignal): Promise<import('./api').OpperCompatModel[]> {
-		return this.catalog.get(`${baseUrl()}\0${key}`, () => client.listModels(undefined, signal));
+	private models(origin: string, client: OpperClient, key: string, signal: AbortSignal): Promise<import('./api').OpperCompatModel[]> {
+		return this.catalog.get(`${origin}\0${key}`, () => client.listModels(undefined, signal));
 	}
 
 	/** Re-fetches the catalogue in the picker — after a key change, say. */
@@ -67,14 +69,15 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 		// nowhere, so an unconfigured provider simply contributes nothing.
 		const connection = cancellation(token);
 		try {
+			const origin = baseUrl();
 			const key = options.silent
 				? await this.auth.peekApiKey()
 				: await this.auth.requireApiKey();
-			if (!key) {
+			if (!key || baseUrl() !== origin) {
 				return [];
 			}
 
-			const client = new OpperClient(baseUrl(), key);
+			const client = new OpperClient(origin, key);
 			const filter = readFilter();
 			const kinds = kindQuery(filter);
 			if (kinds === null) {
@@ -85,8 +88,12 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 			// The one and only source of which models exist. Authenticated and
 			// comply-scoped server-side, so a model the org's allowlist denies
 			// is never returned and cannot be reintroduced from anywhere else.
-			const entries = await this.models(client, key, connection.signal);
-			return toChatInformation(entries, filter);
+			const entries = await this.models(origin, client, key, connection.signal);
+			if (baseUrl() !== origin) return [];
+			return toChatInformation(entries, filter).map(info => {
+				const effort = savedEffort(origin, info.id);
+				return effort ? { ...info, detail: `${info.detail} · Effort: ${effort}` } : info;
+			});
 		} catch (err) {
 			// Never throw out of discovery: a failure here blanks the whole
 			// picker, including other vendors' models.
@@ -98,6 +105,20 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 		} finally { connection.dispose(); }
 	}
 
+	async setThinkingEffort(): Promise<void> {
+		const origin = baseUrl();
+		const key = await this.auth.requireApiKey();
+		if (!key) return;
+		if (baseUrl() !== origin) throw new Error('Opper endpoint changed. Run Set Thinking Effort again.');
+		this.refresh();
+		const client = new OpperClient(origin, key);
+		const entries = await client.listModels();
+		const allowed = new Set(toChatInformation(entries, readFilter()).map(info => info.id));
+		if (baseUrl() !== origin) throw new Error('Opper endpoint changed. Run Set Thinking Effort again.');
+		await chooseEffort(entries.filter(entry => allowed.has(entry.id)), origin);
+		this.refresh();
+	}
+
 	async provideLanguageModelChatResponse(
 		model: vscode.LanguageModelChatInformation,
 		messages: readonly vscode.LanguageModelChatRequestMessage[],
@@ -107,14 +128,18 @@ export class OpperChatModelProvider implements vscode.LanguageModelChatProvider 
 	): Promise<void> {
 		const connection = cancellation(token);
 		try {
+		const origin = baseUrl();
 		const key = await this.auth.peekApiKey();
 		if (!key) throw new Error('No Opper credential. Run "Opper: Sign In".');
-		const client = new OpperClient(baseUrl(), key);
-		const allowed = toChatInformation(await this.models(client, key, connection.signal), readFilter());
+		if (baseUrl() !== origin) throw new Error('Opper endpoint changed. Select an Opper model again.');
+		const client = new OpperClient(origin, key);
+		const entries = await this.models(origin, client, key, connection.signal);
+		if (baseUrl() !== origin) throw new Error('Opper endpoint changed. Select an Opper model again.');
+		const allowed = toChatInformation(entries, readFilter());
 		const current = allowed.find(entry => entry.id === model.id);
 		if (!current) { this.refresh(); throw new Error('This model is no longer available for this key. Select another Opper model.'); }
 		const body: Record<string, unknown> = {
-			...(options.modelOptions ?? {}),
+			...reasoningOptions(entries.find(entry => entry.id === current.id)!, options.modelOptions, savedEffort(origin, current.id)),
 			model: current.id,
 			messages: toOpenAIMessages(messages),
 			max_tokens: current.maxOutputTokens,

@@ -124,6 +124,7 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 		[
 			{ label: choose, description: kindSummary(filter) },
 			{ label: settings, description: 'Display preferences and connection settings' },
+			{ label: 'Set thinking effort…', description: 'Choose a saved effort for an allowed model or pool' },
 			{ label: 'Show budget' },
 			{ label: 'Refresh allowed models' },
 			{ label: 'Show last request context' },
@@ -136,6 +137,7 @@ export async function manageCommand(auth: Auth, baseUrl: string, filter: Catalog
 		{ title: current.summary, placeHolder: current.warning ?? 'Opper' },
 	);
 	switch (picked?.label) {
+		case 'Set thinking effort…': await vscode.commands.executeCommand('opper.setThinkingEffort'); break;
 		case 'Show budget': await vscode.commands.executeCommand('opper.budget'); break;
 		case 'Refresh allowed models': await vscode.commands.executeCommand('opper.refreshModels'); break;
 		case 'Show last request context': await vscode.commands.executeCommand('opper.context'); break;
