@@ -16,6 +16,14 @@ The model picker loads the models, pools, and dynamic routes available to your k
 
 Use **Opper: Account and Models** to view your account, manage sign-in, or choose which model types appear.
 
+## Thinking effort
+
+Run **Opper: Set Thinking Effort**, or choose **Set thinking effort…** from the Opper model menu. Select a model or pool, then one of the levels advertised by the gateway. **Server default** removes the override.
+
+The selection is saved per API endpoint and exact model ID and applies across conversations. The model details show the saved effort. Explicit request options take precedence. A saved level that becomes unavailable blocks the request with instructions to choose another level or reset it.
+
+Pools offer only efforts shared by their allowed members. Dynamic routes and models without effort metadata do not offer configurable levels. This uses a separate Opper control because VS Code’s native Thinking Effort submenu API is still proposed.
+
 ## Usage and budget
 
 Hover over **Opper** in the status bar for a usage summary. Click it to see your project’s spending, allowance, remaining amount, and reset date, where configured.

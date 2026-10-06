@@ -43,6 +43,8 @@ export interface OpperMeta {
 	description?: string;
 	/** `text`, `tools`, `vision`, `pdf`, `structured_output`, `reasoning`, … */
 	capabilities?: string[];
+	/** Caller-scoped efforts; pools advertise only their members' shared levels. */
+	reasoning?: { supported?: string[]; default?: string };
 	max_output_tokens?: number;
 	region?: string;
 	country?: string;

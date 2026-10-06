@@ -28,6 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
 		{ dispose: () => clearInterval(refreshTimer) },
 		vscode.commands.registerCommand('opper.refreshModels', () => { provider.refresh(); void vscode.window.showInformationMessage('Opper model refresh requested. The picker uses your current key’s allowed models.'); }),
 		vscode.commands.registerCommand('opper.budget', () => budget.show()),
+		vscode.commands.registerCommand('opper.setThinkingEffort', () => run(() => provider.setThinkingEffort())),
 		vscode.commands.registerCommand('opper.context', () => provider.showContext()),
 		vscode.window.onDidChangeWindowState(state => {
 			if (state.focused && Date.now() - lastFocusRefresh > 60000) { lastFocusRefresh = Date.now(); provider.refresh(); void budget.refresh(); }
